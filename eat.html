@@ -94,6 +94,8 @@ h1 {
     font-weight: bold;
     cursor: pointer;
     transition: .2s;
+    text-decoration: none;
+    text-align: center;
 }
 .btn:hover {
     opacity: .9;
@@ -105,6 +107,15 @@ h1 {
 }
 .btn.hate:hover {
     background: #444;
+}
+.btn.back {
+    background: #222;
+    color: #fff;
+    margin-top: 15px;
+    width: 100%;
+}
+.btn.back:hover {
+    background: #333;
 }
 </style>
 </head>
@@ -128,6 +139,8 @@ h1 {
     <button class="btn" id="rollBtn">🎲 随机推荐</button>
     <button class="btn hate" id="hateBtn" disabled>❌ 不喜欢这家</button>
 </div>
+<!-- 新增：返回主页按钮 -->
+<a href="/" class="btn back">🏠 返回主页</a>
 </div>
 
 <script>
