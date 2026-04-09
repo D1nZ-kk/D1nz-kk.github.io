@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ 我的美食随机器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #eaeaea;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #121217;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 0 20px rgba(114, 102, 255, 0.15);
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #fff;
+            text-shadow: 0 0 10px #7266ff;
+            margin-bottom: 8px;
+        }
+
+        .desc {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            border: 2px dashed #7266ff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            background: rgba(114, 102, 255, 0.05);
+        }
+
+        .upload-area:hover {
+            background: rgba(114, 102, 255, 0.1);
+            border-color: #8a7aff;
+        }
+
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: #eaeaea;
+            margin-bottom: 4px;
+        }
+
+        .upload-tip {
+            font-size: 12px;
+            color: #888;
+        }
+
+        #imgInput {
+            display: none;
+        }
+
+        /* 随机推荐区域 */
+        .result {
+            background: linear-gradient(135deg, #1a1a24 0%, #1f1f2e 100%);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff5588;
+            margin-bottom: 16px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 85, 136, 0.2);
+            box-shadow: 0 0 15px rgba(255, 85, 136, 0.1);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #7266ff, #ff5588);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(114, 102, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.del {
+            background: #333;
+            color: #ff5555;
+        }
+
+        .btn.del:hover {
+            background: #444;
+            box-shadow: 0 4px 15px rgba(255, 85, 85, 0.3);
+        }
+
+        .btn.manual {
+            background: #222;
+            color: #7266ff;
+            border: 1px solid #7266ff;
+        }
+
+        .btn.manual:hover {
+            background: #2a2a35;
+        }
+
+        /* 店铺列表 */
+        .list-title {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #ddd;
+            font-weight: 600;
+        }
+
+        .shop-item {
+            background: #1a1a24;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #2a2a35;
+            transition: all 0.2s;
+        }
+
+        .shop-item:hover {
+            border-color: #7266ff;
+            background: #1f1f2e;
+        }
+
+        .shop-name {
+            flex: 1;
+            font-size: 15px;
+            color: #eaeaea;
+        }
+
+        .shop-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .shop-edit,
+        .shop-del {
+            background: #282832;
+            border: none;
+            color: #aaa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .shop-edit {
+            color: #7266ff;
+        }
+
+        .shop-edit:hover {
+            background: #7266ff;
+            color: #fff;
+        }
+
+        .shop-del {
+            color: #ff5555;
+        }
+
+        .shop-del:hover {
+            background: #ff5555;
+            color: #fff;
+        }
+
+        .empty {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-size: 14px;
+            background: #1a1a24;
+            border-radius: 8px;
+            border: 1px dashed #333;
+        }
+
+        /* 弹窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal-box {
+            background: #121217;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid #333;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            color: #fff;
+            margin-bottom: 16px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal-input:focus {
+            border-color: #7266ff;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btns .btn {
+            flex: 1;
+        }
+
+        .modal-btns .btn:first-child {
+            background: #333;
+            color: #aaa;
+        }
+
+        .modal-btns .btn:first-child:hover {
+            background: #444;
+        }
+
+        /* 截图预览 */
+        .preview-container {
+            margin-bottom: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1a1a24;
+            max-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+        }
+
+        .preview-tip {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .btn-row {
+                flex-direction: column;
+            }
+
+            .shop-name {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🍽️ 我的美食随机器</h1>
+            <p class="desc">截图导入店铺名 · 自定义列表 · 随机不纠结</p>
+
+            <!-- 上传区域 -->
+            <div class="upload-area" id="uploadBtn">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击上传外卖/点评截图</div>
+                <div class="upload-tip">支持饿了么、美团、大众点评</div>
+            </div>
+            <input type="file" id="imgInput" accept="image/*">
+
+            <!-- 随机推荐 -->
+            <div class="result" id="result">
+                请先导入店铺～
+            </div>
+
+            <div class="btn-row">
+                <button class="btn" id="randomBtn">🎲 随机推荐</button>
+                <button class="btn del" id="clearBtn">🗑️ 清空列表</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn manual" id="addManual">✏️ 手动添加店铺</button>
+            </div>
+        </div>
+
+        <!-- 店铺列表 -->
+        <div class="card">
+            <h2 class="list-title">📋 我的店铺列表 <span id="shopCount" style="font-size: 14px; color: #888; font-weight: normal;">(0)</span></h2>
+            <div id="shopList">
+                <div class="empty">暂无店铺，快去导入吧～</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 截图导入弹窗 -->
+    <div class="modal" id="importModal">
+        <div class="modal-box">
+            <h3 class="modal-title">📸 从截图添加店铺</h3>
+            <div class="preview-container" id="previewContainer"></div>
+            <p class="preview-tip">👆 看截图输入店铺名</p>
+            <input type="text" class="modal-input" id="importInput" placeholder="输入店铺名称">
+            <div class="modal-btns">
+                <button class="btn" id="cancelImport">取消</button>
+                <button class="btn" id="confirmImport">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div class="modal" id="editModal">
+        <div class="modal-box">
+            <h3 class="modal-title">修改店铺名</h3>
+            <input type="text" class="modal-input" id="editInput" placeholder="输入新的店铺名">
+            <div class="modal-btns">
+                <button class="btn" id="cancelEdit">取消</button>
+                <button class="btn" id="saveEdit">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 本地存储核心
+        let shopList = JSON.parse(localStorage.getItem('foodShops')) || [];
+        let editingIndex = -1;
+
+        // DOM元素
+        const uploadBtn = document.getElementById('uploadBtn');
+        const imgInput = document.getElementById('imgInput');
+        const result = document.getElementById('result');
+        const randomBtn = document.getElementById('randomBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const addManual = document.getElementById('addManual');
+        const shopListEl = document.getElementById('shopList');
+        const shopCount = document.getElementById('shopCount');
+
+        // 截图导入弹窗
+        const importModal = document.getElementById('importModal');
+        const previewContainer = document.getElementById('previewContainer');
+        const importInput = document.getElementById('importInput');
+        const confirmImport = document.getElementById('confirmImport');
+        const cancelImport = document.getElementById('cancelImport');
+
+        // 编辑弹窗
+        const editModal = document.getElementById('editModal');
+        const editInput = document.getElementById('editInput');
+        const saveEdit = document.getElementById('saveEdit');
+        const cancelEdit = document.getElementById('cancelEdit');
+
+        // 渲染列表
+        function renderList() {
+            shopCount.textContent = `(${shopList.length})`;
+
+            if (shopList.length === 0) {
+                shopListEl.innerHTML = '<div class="empty">暂无店铺，快去导入吧～</div>';
+                return;
+            }
+
+            shopListEl.innerHTML = shopList.map((shop, idx) => `
+                <div class="shop-item">
+                    <div class="shop-name">${shop}</div>
+                    <div class="shop-btns">
+                        <button class="shop-edit" onclick="editShop(${idx})">修改</button>
+                        <button class="shop-del" onclick="delShop(${idx})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 保存到本地
+        function saveShops() {
+            localStorage.setItem('foodShops', JSON.stringify(shopList));
+            renderList();
+        }
+
+        // 更新结果显示
+        function showResult(text, isError = false) {
+            result.innerHTML = text;
+            result.style.color = isError ? '#ff5555' : '#ff5588';
+        }
+
+        // 随机推荐
+        randomBtn.onclick = () => {
+            if (shopList.length === 0) {
+                showResult('❌ 请先导入店铺哦～', true);
+                return;
+            }
+
+            // 添加随机动画效果
+            let count = 0;
+            const maxCount = 10;
+            const interval = setInterval(() => {
+                const randomShop = shopList[Math.floor(Math.random() * shopList.length)];
+                result.innerHTML = `<span class="loading">🎲</span> ${randomShop}`;
+                count++;
+
+                if (count >= maxCount) {
+                    clearInterval(interval);
+                    const finalShop = shopList[Math.floor(Math.random() * shopList.length)];
+                    showResult(`🎉 今天吃：${finalShop}`);
+                }
+            }, 100);
+        };
+
+        // 清空列表
+        clearBtn.onclick = () => {
+            if (shopList.length === 0) {
+                showResult('❌ 列表已经是空的了', true);
+                return;
+            }
+
+            if (confirm('确定要清空所有店铺吗？此操作不可恢复！')) {
+                shopList = [];
+                saveShops();
+                showResult('🗑️ 已清空列表');
+            }
+        };
+
+        // 截图上传 - 显示预览弹窗
+        uploadBtn.onclick = () => imgInput.click();
+
+        imgInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 创建图片预览
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                previewContainer.innerHTML = `<img src="${event.target.result}" alt="截图预览">`;
+                importInput.value = '';
+                importModal.style.display = 'flex';
+                importInput.focus();
+            };
+            reader.readAsDataURL(file);
+
+            // 清空input，允许重复上传
+            imgInput.value = '';
+        };
+
+        // 确认导入
+        confirmImport.onclick = () => {
+            const name = importInput.value.trim();
+            if (!name) {
+                alert('请输入店铺名称');
+                return;
+            }
+
+            if (shopList.includes(name)) {
+                alert('该店铺已存在');
+                return;
+            }
+
+            shopList.push(name);
+            saveShops();
+            importModal.style.display = 'none';
+            showResult(`✅ 添加成功：${name}`);
+        };
+
+        cancelImport.onclick = () => {
+            importModal.style.display = 'none';
+        };
+
+        // 回车确认导入
+        importInput.onkeyup = (e) => {
+            if (e.key === 'Enter') {
+                confirmImport.click();
+            }
+        };
+
+        // 手动添加
+        addManual.onclick = () => {
+            const name = prompt('请输入店铺名：');
+            if (name && name.trim()) {
+                const trimmedName = name.trim();
+                if (shopList.includes(trimmedName)) {
+                    showResult(`⚠️ 已存在：${trimmedName}`, true);
+                } else {
+                    shopList.push(trimmedName);
+                    saveShops();
+                    showResult(`✅ 手动添加成功：${trimmedName}`);
+                }
+            }
+        };
+
+        // 修改店铺
+        window.editShop = (idx) => {
+            editingIndex = idx;
+            editInput.value = shopList[idx];
+            editModal.style.display = 'flex';
+            editInput.focus();
+        };
+
+        saveEdit.onclick = () => {
+            const val = editInput.value.trim();
+            if (!val) {
+                alert('请输入店铺名');
+                return;
+            }
+
+            if (val !== shopList[editingIndex] && shopList.includes(val)) {
+                alert('该店铺已存在');
+                return;
+            }
+
+            shopList[editingIndex] = val;
+            saveShops();
+            editModal.style.display = 'none';
+            showResult(`✅ 修改成功：${val}`);
+        };
+
+        cancelEdit.onclick = () => {
+            editModal.style.display = 'none';
+        };
+
+        // 点击弹窗外部关闭
+        importModal.onclick = (e) => {
+            if (e.target === importModal) {
+                importModal.style.display = 'none';
+            }
+        };
+
+        editModal.onclick = (e) => {
+            if (e.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        };
+
+        // 回车保存编辑
+        editInput.onkeyup = (e) => {
+            if (e.key === 'Enter') {
+                saveEdit.click();
+            }
+        };
+
+        // 删除店铺
+        window.delShop = (idx) => {
+            const deletedShop = shopList[idx];
+            if (confirm(`确定删除 "${deletedShop}" 吗？`)) {
+                shopList.splice(idx, 1);
+                saveShops();
+                showResult(`🗑️ 已删除：${deletedShop}`);
+            }
+        };
+
+        // 初始化
+        renderList();
+    </script>
+</body>
+</html>
