@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍽️ 我的美食随机器</title>
+    <!-- Tesseract.js OCR库 -->
+    <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -46,6 +48,31 @@
             margin-bottom: 16px;
         }
 
+        /* OCR状态提示 */
+        .ocr-status {
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            background: #1a1a24;
+            border: 1px solid #333;
+        }
+
+        .ocr-status.ready {
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+
+        .ocr-status.loading {
+            color: #fbbf24;
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .ocr-status.error {
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
         /* 上传区域 */
         .upload-area {
             border: 2px dashed #7266ff;
@@ -61,6 +88,11 @@
         .upload-area:hover {
             background: rgba(114, 102, 255, 0.1);
             border-color: #8a7aff;
+        }
+
+        .upload-area.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .upload-icon {
@@ -299,7 +331,7 @@
             border-radius: 8px;
             overflow: hidden;
             background: #1a1a24;
-            max-height: 300px;
+            max-height: 250px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -307,15 +339,62 @@
 
         .preview-container img {
             max-width: 100%;
-            max-height: 300px;
+            max-height: 250px;
             object-fit: contain;
         }
 
-        .preview-tip {
+        /* 识别进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #1a1a24;
+            border-radius: 3px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7266ff, #ff5588);
+            border-radius: 3px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .progress-text {
             font-size: 12px;
             color: #888;
             text-align: center;
             margin-bottom: 12px;
+        }
+
+        /* 识别候选列表 */
+        .candidates {
+            margin-bottom: 12px;
+        }
+
+        .candidates-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .candidate-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #eaeaea;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .candidate-btn:hover {
+            border-color: #7266ff;
+            background: #2a2a35;
         }
 
         /* 加载动画 */
@@ -353,7 +432,12 @@
     <div class="container">
         <div class="card">
             <h1>🍽️ 我的美食随机器</h1>
-            <p class="desc">截图导入店铺名 · 自定义列表 · 随机不纠结</p>
+            <p class="desc">截图导入店铺名 · 自动识别 · 随机不纠结</p>
+
+            <!-- OCR状态 -->
+            <div class="ocr-status loading" id="ocrStatus">
+                <span class="loading">⏳</span> 正在加载文字识别引擎...
+            </div>
 
             <!-- 上传区域 -->
             <div class="upload-area" id="uploadBtn">
@@ -390,10 +474,24 @@
     <!-- 截图导入弹窗 -->
     <div class="modal" id="importModal">
         <div class="modal-box">
-            <h3 class="modal-title">📸 从截图添加店铺</h3>
+            <h3 class="modal-title">📸 识别截图中的店铺</h3>
             <div class="preview-container" id="previewContainer"></div>
-            <p class="preview-tip">👆 看截图输入店铺名</p>
-            <input type="text" class="modal-input" id="importInput" placeholder="输入店铺名称">
+            
+            <!-- 识别进度 -->
+            <div id="recognizeProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备识别...</div>
+            </div>
+
+            <!-- 候选店名 -->
+            <div class="candidates" id="candidatesBox" style="display: none;">
+                <div class="candidates-title">👆 点击选择识别结果：</div>
+                <div id="candidatesList"></div>
+            </div>
+
+            <input type="text" class="modal-input" id="importInput" placeholder="输入或选择店铺名称">
             <div class="modal-btns">
                 <button class="btn" id="cancelImport">取消</button>
                 <button class="btn" id="confirmImport">添加</button>
@@ -414,9 +512,11 @@
     </div>
 
     <script>
-        // 本地存储核心
+        // 本地存储
         let shopList = JSON.parse(localStorage.getItem('foodShops')) || [];
         let editingIndex = -1;
+        let ocrWorker = null;
+        let isOcrReady = false;
 
         // DOM元素
         const uploadBtn = document.getElementById('uploadBtn');
@@ -427,6 +527,7 @@
         const addManual = document.getElementById('addManual');
         const shopListEl = document.getElementById('shopList');
         const shopCount = document.getElementById('shopCount');
+        const ocrStatus = document.getElementById('ocrStatus');
 
         // 截图导入弹窗
         const importModal = document.getElementById('importModal');
@@ -434,12 +535,50 @@
         const importInput = document.getElementById('importInput');
         const confirmImport = document.getElementById('confirmImport');
         const cancelImport = document.getElementById('cancelImport');
+        const recognizeProgress = document.getElementById('recognizeProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const candidatesBox = document.getElementById('candidatesBox');
+        const candidatesList = document.getElementById('candidatesList');
 
         // 编辑弹窗
         const editModal = document.getElementById('editModal');
         const editInput = document.getElementById('editInput');
         const saveEdit = document.getElementById('saveEdit');
         const cancelEdit = document.getElementById('cancelEdit');
+
+        // 初始化OCR Worker
+        async function initOcr() {
+            try {
+                ocrStatus.className = 'ocr-status loading';
+                ocrStatus.innerHTML = '<span class="loading">⏳</span> 正在加载文字识别引擎...';
+
+                ocrWorker = await Tesseract.createWorker('chi_sim+eng', 1, {
+                    logger: m => {
+                        if (m.status === 'loading tesseract core') {
+                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 加载OCR核心...';
+                        } else if (m.status === 'initializing tesseract') {
+                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 初始化识别引擎...';
+                        } else if (m.status === 'loading language traineddata') {
+                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 加载中英文语言包...';
+                        } else if (m.status === 'initializing api') {
+                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 准备就绪...';
+                        }
+                    }
+                });
+
+                isOcrReady = true;
+                ocrStatus.className = 'ocr-status ready';
+                ocrStatus.innerHTML = '✅ 文字识别已就绪，可以上传截图了';
+                uploadBtn.classList.remove('disabled');
+
+            } catch (err) {
+                console.error('OCR初始化失败:', err);
+                ocrStatus.className = 'ocr-status error';
+                ocrStatus.innerHTML = '⚠️ OCR加载失败，将使用手动输入模式';
+                isOcrReady = false;
+            }
+        }
 
         // 渲染列表
         function renderList() {
@@ -480,7 +619,6 @@
                 return;
             }
 
-            // 添加随机动画效果
             let count = 0;
             const maxCount = 10;
             const interval = setInterval(() => {
@@ -510,25 +648,113 @@
             }
         };
 
-        // 截图上传 - 显示预览弹窗
-        uploadBtn.onclick = () => imgInput.click();
+        // 截图上传
+        uploadBtn.onclick = () => {
+            if (!isOcrReady) {
+                alert('OCR引擎还未就绪，请稍候...');
+                return;
+            }
+            imgInput.click();
+        };
 
-        imgInput.onchange = (e) => {
+        imgInput.onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            // 创建图片预览
+            // 显示预览
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = async (event) => {
                 previewContainer.innerHTML = `<img src="${event.target.result}" alt="截图预览">`;
                 importInput.value = '';
+                candidatesBox.style.display = 'none';
+                recognizeProgress.style.display = 'block';
+                progressFill.style.width = '0%';
                 importModal.style.display = 'flex';
-                importInput.focus();
+                
+                // 开始OCR识别
+                await recognizeImage(event.target.result);
             };
             reader.readAsDataURL(file);
-
-            // 清空input，允许重复上传
             imgInput.value = '';
+        };
+
+        // OCR识别图片
+        async function recognizeImage(imageData) {
+            if (!isOcrReady) {
+                progressText.textContent = 'OCR未就绪，请手动输入';
+                recognizeProgress.style.display = 'none';
+                return;
+            }
+
+            try {
+                progressText.textContent = '正在识别文字...';
+
+                const { data: { text, words } } = await ocrWorker.recognize(imageData, {}, {
+                    text: true
+                });
+
+                progressFill.style.width = '100%';
+                progressText.textContent = '识别完成！';
+
+                console.log('OCR原始结果:', text);
+
+                // 解析可能的店名
+                const candidates = extractShopNames(text);
+
+                setTimeout(() => {
+                    recognizeProgress.style.display = 'none';
+                    
+                    if (candidates.length > 0) {
+                        // 显示候选店名
+                        candidatesBox.style.display = 'block';
+                        candidatesList.innerHTML = candidates.map(name => 
+                            `<button class="candidate-btn" onclick="selectCandidate('${name}')">${name}</button>`
+                        ).join('');
+                        
+                        // 自动填入第一个候选
+                        importInput.value = candidates[0];
+                        importInput.focus();
+                        importInput.select();
+                    } else {
+                        candidatesBox.style.display = 'none';
+                        progressText.textContent = '未识别到店名，请手动输入';
+                    }
+                }, 500);
+
+            } catch (err) {
+                console.error('OCR识别错误:', err);
+                recognizeProgress.style.display = 'none';
+                progressText.textContent = '识别失败，请手动输入';
+            }
+        }
+
+        // 从OCR文本中提取可能的店名
+        function extractShopNames(text) {
+            const lines = text.split('\n')
+                .map(l => l.trim())
+                .filter(l => {
+                    if (!l || l.length < 2) return false;
+                    // 过滤明显的非店名
+                    if (/订单|编号|时间|配送|包装|优惠|合计|实付|支付|完成|预计|送达|分钟|公里|地址|电话|手机|备注|发票|评价|投诉|客服|退款|取消/.test(l)) return false;
+                    if (/^\d+$/.test(l)) return false;
+                    if (/^[¥￥$]\s*\d/.test(l)) return false;
+                    if (/^\d+[\.\-\)]\s/.test(l)) return false; // 序号开头
+                    return true;
+                });
+
+            // 清理店名中的特殊字符
+            const cleaned = lines.map(l => {
+                return l.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-\.\(\)（）【】\[\]·]/g, '').trim();
+            }).filter(l => l.length >= 2 && l.length <= 20);
+
+            // 去重
+            return [...new Set(cleaned)];
+        }
+
+        // 选择候选店名
+        window.selectCandidate = (name) => {
+            importInput.value = name;
+            importInput.focus();
         };
 
         // 确认导入
@@ -554,7 +780,7 @@
             importModal.style.display = 'none';
         };
 
-        // 回车确认导入
+        // 回车确认
         importInput.onkeyup = (e) => {
             if (e.key === 'Enter') {
                 confirmImport.click();
@@ -638,6 +864,7 @@
 
         // 初始化
         renderList();
+        initOcr(); // 启动OCR
     </script>
 </body>
 </html>
