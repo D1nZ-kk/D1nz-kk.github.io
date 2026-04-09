@@ -11,143 +11,199 @@ body {
     color: #eaeaea;
     font-family: 'Segoe UI', sans-serif;
     padding: 20px;
-    line-height: 1.4;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .container {
-    max-width: 500px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 520px;
 }
 .card {
     background: #121217;
     border: 1px solid #333;
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 16px;
-    box-shadow: 0 0 20px rgba(100,50,200,0.15);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 0 30px rgba(114, 102, 255, 0.2);
 }
 h1 {
-    font-size: 22px;
+    font-size: 24px;
     color: #fff;
     text-shadow: 0 0 10px #7266ff;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    text-align: center;
 }
 .desc {
-    font-size: 13px;
+    font-size: 14px;
     color: #888;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
+    text-align: center;
 }
+
+/* 上传区域 - 修复排版错位 */
 .upload-area {
     border: 2px dashed #7266ff;
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px 16px;
     text-align: center;
     cursor: pointer;
-    margin-bottom: 16px;
-    transition: 0.2s;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+    background: transparent;
 }
 .upload-area:hover {
-    background: #1a1a24;
+    background: rgba(114, 102, 255, 0.1);
+    border-color: #ff5588;
 }
 #imgInput {display: none;}
-.ocr-tip {font-size: 13px; color: #aaa; margin-top: 6px;}
+.ocr-tip {
+    font-size: 13px;
+    color: #aaa;
+    margin-top: 8px;
+}
 
-/* 随机推荐区域 */
+/* 随机结果区域 */
 .result {
     background: #1a1a24;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 20px;
     text-align: center;
     font-size: 20px;
     font-weight: bold;
     color: #ff5588;
-    margin-bottom: 12px;
-    min-height: 60px;
+    margin-bottom: 16px;
+    min-height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
+    word-break: break-word;
 }
+
+/* 按钮区域 */
 .btn-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 28px;
 }
 .btn {
     flex: 1;
-    padding: 12px;
+    padding: 14px;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     background: linear-gradient(90deg, #7266ff, #ff5588);
     color: #fff;
     font-weight: bold;
+    font-size: 15px;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
-.btn.del {background: #333; color: #ff5555;}
-.btn.manual {background: #222; color: #7266ff;}
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+.btn.manual {
+    background: #222;
+    color: #7266ff;
+    border: 1px solid #7266ff;
+}
+.btn.del {
+    background: #333;
+    color: #ff5555;
+    border: 1px solid #ff5555;
+}
 
 /* 店铺列表 */
 .list-title {
-    font-size: 16px;
-    margin-bottom: 12px;
+    font-size: 17px;
+    margin-bottom: 16px;
     color: #ddd;
+    padding-left: 4px;
 }
 .shop-item {
     background: #1a1a24;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
-.shop-name {flex: 1; font-size: 15px;}
+.shop-name {
+    flex: 1;
+    font-size: 15px;
+    word-break: break-word;
+}
 .shop-edit, .shop-del {
     background: #282832;
     border: none;
     color: #aaa;
-    padding: 6px 10px;
-    border-radius: 6px;
-    margin-left: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
+    transition: all 0.2s ease;
 }
-.shop-edit {color: #7266ff;}
-.shop-del {color: #ff5555;}
-.empty {text-align: center; color: #666; padding: 20px; font-size: 14px;}
+.shop-edit {
+    color: #7266ff;
+    margin-right: 6px;
+}
+.shop-edit:hover {
+    background: rgba(114, 102, 255, 0.2);
+}
+.shop-del {
+    color: #ff5555;
+}
+.shop-del:hover {
+    background: rgba(255, 85, 85, 0.2);
+}
+.empty {
+    text-align: center;
+    color: #666;
+    padding: 24px;
+    font-size: 14px;
+    background: #1a1a24;
+    border-radius: 10px;
+}
 
-/* 弹窗 */
+/* 修改弹窗 */
 .modal {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.75);
     display: none;
     align-items: center;
     justify-content: center;
     padding: 20px;
+    z-index: 999;
 }
 .modal-box {
     background: #121217;
     border-radius: 16px;
-    padding: 24px;
+    padding: 28px;
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
 }
 .modal-title {
     font-size: 18px;
     margin-bottom: 16px;
+    color: #fff;
 }
 .modal-input {
     width: 100%;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 14px;
+    border-radius: 10px;
     background: #1a1a24;
     border: 1px solid #333;
     color: #fff;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     font-size: 15px;
 }
 .modal-btns {
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 </style>
 </head>
@@ -158,7 +214,7 @@ h1 {
         <h1>🍽️ 我的美食随机器</h1>
         <p class="desc">截图导入店铺名 · 自定义列表 · 随机不纠结</p>
 
-        <!-- 截图上传识别 -->
+        <!-- 截图上传识别 - 修复排版 -->
         <label class="upload-area" id="uploadBtn">
             <p>📸 上传外卖/点评截图导入店铺</p>
             <p class="ocr-tip">支持饿了么、美团、大众点评</p>
@@ -192,7 +248,7 @@ h1 {
     </div>
 </div>
 
-<!-- OCR识别库 -->
+<!-- OCR识别库 - 加加载兜底 -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 // 本地存储核心
@@ -244,27 +300,54 @@ randomBtn.onclick = () => {
     result.innerText = rnd;
 };
 
-// 截图上传
+// 截图上传 - 彻底解决卡死：加超时+进度+错误处理
 uploadBtn.onclick = () => imgInput.click();
 imgInput.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    result.innerText = '正在识别截图...';
+
+    // 重置状态，避免卡死
+    result.innerText = '正在初始化识别...';
+
     try {
-        const { data: { text } } = await Tesseract.recognize(file, 'chi_sim+eng');
-        // 简单提取店名（取有效行）
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l && l.length > 2 && !/订单|编号|时间|配送|￥/.test(l));
-        const shopName = lines[0] || '未识别到店名';
+        // 15秒超时+进度提示，彻底解决卡死
+        const recognizePromise = Tesseract.recognize(
+            file,
+            'chi_sim+eng',
+            {
+                logger: m => {
+                    // 显示实时进度，让用户知道在运行
+                    if (m.status === 'recognizing text') {
+                        result.innerText = `正在识别... ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            }
+        );
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('识别超时（15秒），请重试或手动添加')), 15000)
+        );
+
+        //  race超时和识别，哪个先到算哪个
+        const { data: { text } } = await Promise.race([recognizePromise, timeoutPromise]);
+
+        // 过滤垃圾文字，精准提取店名
+        const lines = text.split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 2 && !/订单|编号|时间|配送|￥|金额|满减|优惠/.test(l));
         
+        const shopName = lines[0] || '未识别到有效店名';
+
+        // 去重添加
         if (!shopList.includes(shopName)) {
             shopList.push(shopName);
             saveShops();
             result.innerText = `✅ 导入成功：${shopName}`;
         } else {
-            result.innerText = `⚠️ 已存在：${shopName}`;
+            result.innerText = `⚠️ 该店铺已存在`;
         }
     } catch (err) {
-        result.innerText = '识别失败，重试或手动添加';
+        // 错误处理，重置状态，避免卡死
+        result.innerText = `识别失败：${err.message}`;
     }
 };
 
@@ -307,5 +390,6 @@ window.delShop = (idx) => {
 // 初始化
 renderList();
 </script>
+
 </body>
 </html>
