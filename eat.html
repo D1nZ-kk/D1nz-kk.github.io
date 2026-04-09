@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍽️ 我的美食随机器</title>
-    <!-- Tesseract.js OCR库 -->
-    <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- 更换更稳定的Tesseract CDN，指定Worker路径解决电脑端跨域 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -440,7 +440,7 @@
             </div>
 
             <!-- 上传区域 -->
-            <div class="upload-area" id="uploadBtn">
+            <div class="upload-area disabled" id="uploadBtn">
                 <div class="upload-icon">📸</div>
                 <div class="upload-text">点击上传外卖/点评截图</div>
                 <div class="upload-tip">支持饿了么、美团、大众点评</div>
@@ -547,25 +547,37 @@
         const saveEdit = document.getElementById('saveEdit');
         const cancelEdit = document.getElementById('cancelEdit');
 
-        // 初始化OCR Worker
+        // 优化：初始化OCR - 解决电脑端卡顿/跨域问题
         async function initOcr() {
             try {
                 ocrStatus.className = 'ocr-status loading';
                 ocrStatus.innerHTML = '<span class="loading">⏳</span> 正在加载文字识别引擎...';
 
-                ocrWorker = await Tesseract.createWorker('chi_sim+eng', 1, {
+                // 配置Worker路径，解决电脑端file://协议跨域问题
+                const workerOptions = {
                     logger: m => {
-                        if (m.status === 'loading tesseract core') {
-                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 加载OCR核心...';
-                        } else if (m.status === 'initializing tesseract') {
-                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 初始化识别引擎...';
-                        } else if (m.status === 'loading language traineddata') {
-                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 加载中英文语言包...';
-                        } else if (m.status === 'initializing api') {
-                            ocrStatus.innerHTML = '<span class="loading">⏳</span> 准备就绪...';
+                        // 优化：降低DOM更新频率，避免线程阻塞
+                        if (m.status === 'loading tesseract core' && m.progress > 0.1) {
+                            ocrStatus.innerHTML = `<span class="loading">⏳</span> 加载OCR核心(${Math.floor(m.progress*100)}%)...`;
+                        } else if (m.status === 'loading language traineddata' && m.progress > 0.1) {
+                            ocrStatus.innerHTML = `<span class="loading">⏳</span> 加载中英文语言包(${Math.floor(m.progress*100)}%)...`;
                         }
-                    }
-                });
+                    },
+                    // 指定CDN Worker路径，避免本地加载失败
+                    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+                    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js'
+                };
+
+                // 超时处理：防止无限等待
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('OCR初始化超时')), 30000)
+                );
+
+                // 并行执行：初始化+超时检测
+                ocrWorker = await Promise.race([
+                    Tesseract.createWorker('chi_sim+eng', 1, workerOptions),
+                    timeoutPromise
+                ]);
 
                 isOcrReady = true;
                 ocrStatus.className = 'ocr-status ready';
@@ -577,6 +589,8 @@
                 ocrStatus.className = 'ocr-status error';
                 ocrStatus.innerHTML = '⚠️ OCR加载失败，将使用手动输入模式';
                 isOcrReady = false;
+                // 即使OCR失败，也解锁上传按钮（降级为纯手动输入）
+                uploadBtn.classList.remove('disabled');
             }
         }
 
@@ -650,10 +664,6 @@
 
         // 截图上传
         uploadBtn.onclick = () => {
-            if (!isOcrReady) {
-                alert('OCR引擎还未就绪，请稍候...');
-                return;
-            }
             imgInput.click();
         };
 
@@ -680,26 +690,45 @@
 
         // OCR识别图片
         async function recognizeImage(imageData) {
+            // 即使OCR未就绪，也显示手动输入界面
             if (!isOcrReady) {
-                progressText.textContent = 'OCR未就绪，请手动输入';
-                recognizeProgress.style.display = 'none';
+                progressFill.style.width = '100%';
+                progressText.textContent = 'OCR未就绪，请手动输入店铺名';
+                setTimeout(() => {
+                    recognizeProgress.style.display = 'none';
+                }, 1000);
                 return;
             }
 
             try {
                 progressText.textContent = '正在识别文字...';
+                progressFill.style.width = '10%';
 
-                const { data: { text, words } } = await ocrWorker.recognize(imageData, {}, {
-                    text: true
-                });
+                // 分步识别，增加进度反馈
+                const recognizeProcess = ocrWorker.recognize(
+                    imageData,
+                    { 
+                        tessedit_pageseg_mode: 3, // 自动分页模式，适配多店铺列表
+                        preserve_interword_spaces: 1 // 保留单词间距，提升中文识别
+                    },
+                    {
+                        progress: (p) => {
+                            // 更新进度条
+                            const progress = Math.floor(p * 90) + 10; // 10%-100%
+                            progressFill.style.width = `${progress}%`;
+                            progressText.textContent = `识别中(${progress}%)...`;
+                        }
+                    }
+                );
 
+                const { data: { text } } = await recognizeProcess;
                 progressFill.style.width = '100%';
-                progressText.textContent = '识别完成！';
+                progressText.textContent = '识别完成！正在解析店名...';
 
                 console.log('OCR原始结果:', text);
 
-                // 解析可能的店名
-                const candidates = extractShopNames(text);
+                // 优化：智能提取店名
+                const candidates = extractShopNamesOptimized(text);
 
                 setTimeout(() => {
                     recognizeProgress.style.display = 'none';
@@ -719,36 +748,87 @@
                         candidatesBox.style.display = 'none';
                         progressText.textContent = '未识别到店名，请手动输入';
                     }
-                }, 500);
+                }, 800);
 
             } catch (err) {
                 console.error('OCR识别错误:', err);
-                recognizeProgress.style.display = 'none';
+                progressFill.style.width = '100%';
                 progressText.textContent = '识别失败，请手动输入';
+                setTimeout(() => {
+                    recognizeProgress.style.display = 'none';
+                }, 1000);
             }
         }
 
-        // 从OCR文本中提取可能的店名
-        function extractShopNames(text) {
+        // 优化：智能提取店名（适配外卖多店铺截图）
+        function extractShopNamesOptimized(text) {
+            // 1. 按行分割并预处理
             const lines = text.split('\n')
                 .map(l => l.trim())
-                .filter(l => {
-                    if (!l || l.length < 2) return false;
-                    // 过滤明显的非店名
-                    if (/订单|编号|时间|配送|包装|优惠|合计|实付|支付|完成|预计|送达|分钟|公里|地址|电话|手机|备注|发票|评价|投诉|客服|退款|取消/.test(l)) return false;
-                    if (/^\d+$/.test(l)) return false;
-                    if (/^[¥￥$]\s*\d/.test(l)) return false;
-                    if (/^\d+[\.\-\)]\s/.test(l)) return false; // 序号开头
-                    return true;
-                });
+                .filter(l => l.length >= 2); // 过滤空行/超短文本
 
-            // 清理店名中的特殊字符
-            const cleaned = lines.map(l => {
-                return l.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-\.\(\)（）【】\[\]·]/g, '').trim();
-            }).filter(l => l.length >= 2 && l.length <= 20);
+            // 2. 外卖平台专属过滤规则（重点优化）
+            const shopLineFilter = (line) => {
+                // 排除明显非店铺名的关键词（覆盖美团/饿了么/点评）
+                const excludeKeywords = [
+                    // 基础排除
+                    '订单', '编号', '时间', '配送', '包装', '优惠', '合计', '实付', '支付', '完成', '预计', '送达', 
+                    '分钟', '公里', '地址', '电话', '手机', '备注', '发票', '评价', '投诉', '客服', '退款', '取消',
+                    // 外卖平台专属
+                    '月售', '评分', '起送', '配送费', '打包费', '满减', '优惠', '折扣', '券', '红包', '立减', '特价',
+                    '热销', '新品', '推荐', '商家', '店铺', '距离', '人均', '营业时间', '休息中', '营业中', '暂停营业',
+                    '已售', '好评', '中评', '差评', '口味', '包装', '配送速度', '骑手', '取餐', '确认收货', '申请售后',
+                    // 价格/序号排除
+                    '¥', '￥', '$', '美团', '饿了么', '大众点评', '抖音团购', '小红书',
+                    '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '0.', // 序号
+                    '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩' // 圈形序号
+                ];
 
-            // 去重
-            return [...new Set(cleaned)];
+                // 排除包含以上关键词的行
+                if (excludeKeywords.some(key => line.includes(key))) return false;
+                
+                // 排除纯数字/纯符号行
+                if (/^\d+$/.test(line)) return false;
+                if (/^[^\u4e00-\u9fa5a-zA-Z]+$/.test(line)) return false; // 无中文/英文
+                
+                // 排除价格开头的行（如 ¥20、18.8元）
+                if (/^[¥￥$]\s*\d/.test(line)) return false;
+                if (/^\d+(\.\d+)?\s*元/.test(line)) return false;
+                
+                // 排除序号开头的行（如 1、2、(1)、【1】）
+                if (/^[\d①②③④⑤⑥⑦⑧⑨⑩]{1,2}[\.\-\)（）【】\[\]]\s*/.test(line)) return false;
+                
+                return true;
+            };
+
+            // 3. 筛选出候选行
+            const candidateLines = lines.filter(shopLineFilter);
+
+            // 4. 深度清洗店铺名（去除干扰字符）
+            const cleanShopName = (name) => {
+                // 保留：中文、英文、数字、常见店铺名符号（- . ()（）【】·）
+                const cleaned = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-\.\(\)（）【】\[\]·]/g, '').trim();
+                // 过滤清洗后过短/过长的文本（店铺名通常2-20字）
+                return cleaned.length >= 2 && cleaned.length <= 20 ? cleaned : '';
+            };
+
+            // 5. 清洗并去重
+            const cleanedNames = candidateLines
+                .map(cleanShopName)
+                .filter(name => name) // 过滤清洗后为空的
+                .filter((name, idx, arr) => arr.indexOf(name) === idx); // 去重
+
+            // 6. 补充优化：如果识别结果少，放宽过滤规则（避免漏识别）
+            if (cleanedNames.length <= 1) {
+                const relaxedLines = lines
+                    .filter(l => l.length >= 3)
+                    .map(cleanShopName)
+                    .filter(name => name)
+                    .filter((name, idx, arr) => arr.indexOf(name) === idx);
+                return relaxedLines.length > cleanedNames.length ? relaxedLines : cleanedNames;
+            }
+
+            return cleanedNames;
         }
 
         // 选择候选店名
