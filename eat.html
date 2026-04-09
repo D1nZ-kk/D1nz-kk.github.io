@@ -20,7 +20,7 @@ body {
 h1 {
     font-size: 24px;
     margin-bottom: 10px;
-    color: #fff;
+    color: #ffffff;
     text-shadow: 0 0 10px #7266ff;
 }
 .desc {
@@ -49,13 +49,14 @@ h1 {
     border-radius: 20px;
     font-size: 12px;
     cursor: pointer;
+    transition: .2s;
 }
 .tag.active {
     background: #7266ff;
     color: #fff;
 }
 .result {
-    font-size: 18px;
+    font-size: 20px;
     margin: 20px 0;
     padding: 16px;
     background: #1a1a24;
@@ -66,15 +67,21 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
 }
-.name {
+.result .name {
     font-weight: bold;
     color: #ff5588;
+    font-size: 22px;
+}
+.result .info {
+    font-size: 14px;
+    color: #aaa;
 }
 .btn-group {
     display: flex;
     gap: 10px;
+    margin-top: 10px;
 }
 .btn {
     flex: 1;
@@ -86,14 +93,31 @@ h1 {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
+    transition: .2s;
+}
+.btn:hover {
+    opacity: .9;
+    transform: scale(1.02);
 }
 .btn.hate {
     background: #333;
     color: #ff5555;
 }
+.btn.hate:hover {
+    background: #444;
+}
 .btn:disabled {
-    opacity: 0.5;
+    opacity: .5;
     cursor: not-allowed;
+    transform: none;
+}
+.loading {
+    color: #7266ff;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0%, 100% {opacity: 1;}
+    50% {opacity: .5;}
 }
 </style>
 </head>
@@ -102,96 +126,161 @@ h1 {
 <div class="box">
 <h1>🎲 今晚吃什么？</h1>
 <p class="desc">真实定位 · 附近商家 · 随机推荐</p>
-
 <div class="tags">
-<div class="tag active" data-key="餐饮">全部</div>
-<div class="tag" data-key="火锅">火锅</div>
-<div class="tag" data-key="烧烤">烧烤</div>
-<div class="tag" data-key="奶茶">奶茶</div>
-<div class="tag" data-key="西餐">西餐</div>
-<div class="tag" data-key="快餐">快餐</div>
+<div class="tag active" data-type="all">全部</div>
+<div class="tag" data-type="hotpot">火锅</div>
+<div class="tag" data-type="bbq">烧烤</div>
+<div class="tag" data-type="milktea">奶茶</div>
+<div class="tag" data-type="western">西餐</div>
+<div class="tag" data-type="fastfood">快餐</div>
 </div>
-
-<div class="result" id="result">请先允许定位权限</div>
-
+<div class="result" id="result">
+    <span class="loading">正在获取你的位置...</span>
+</div>
 <div class="btn-group">
-<button class="btn" id="roll" disabled>🎲 随机推荐</button>
-<button class="btn hate" id="hate" disabled>❌ 不喜欢</button>
+    <button class="btn" id="rollBtn" disabled>🎲 随机推荐</button>
+    <button class="btn hate" id="hateBtn" disabled>❌ 不喜欢这家</button>
 </div>
 </div>
 
-<!-- 🔒 这里填入你的专属 Key -->
-<script src="https://map.qq.com/api/js?v=2.exp&key=XNTBZ-GOYCA-UZHKE-CNXDR-LAQ22-ZQFWB"></script>
 <script>
-const result = document.getElementById('result');
-const rollBtn = document.getElementById('roll');
-const hateBtn = document.getElementById('hate');
-let currentKeyword = '餐饮';
-let currentShop = null;
-let shops = [];
-let hated = JSON.parse(localStorage.getItem('hated')) || [];
+// 🎯 分城市商家库（你可以随便加自己城市的店！完全个性化）
+const cityFoods = {
+    // 上海（可加你家附近的店）
+    "shanghai": {
+        all: ["海底捞（上海）","木屋烧烤（上海）","蜜雪冰城（上海）","肯德基（上海）","麦当劳（上海）","星巴克（上海）","麻辣烫（上海）","麻辣香锅（上海）","日料（上海）","烤肉（上海）","披萨（上海）","黄焖鸡（上海）","沙县小吃（上海）","兰州拉面（上海）","炸鸡（上海）","汉堡（上海）","烤鱼（上海）","串串（上海）","冒菜（上海）","螺蛳粉（上海）","寿司（上海）","生腌（上海）","小龙虾（上海）","汉堡王（上海）","德克士（上海）","瑞幸（上海）","库迪（上海）","喜茶（上海）","奈雪（上海）","一点点（上海）","CoCo（上海）","茶百道（上海）","古茗（上海）","沪上阿姨（上海）","益禾堂（上海）","书亦烧仙草（上海）"],
+        hotpot: ["海底捞（上海）","呷哺呷哺（上海）","串串火锅（上海）","重庆火锅（上海）","羊肉火锅（上海）","潮汕牛肉火锅（上海）","寿喜烧（上海）","铜锅涮肉（上海）","冒菜（上海）","麻辣烫（上海）"],
+        bbq: ["木屋烧烤（上海）","烤串（上海）","烤冷面（上海）","烤翅（上海）","烤鱿鱼（上海）","烤生蚝（上海）","烤五花肉（上海）","烤蔬菜（上海）","韩式烤肉（上海）"],
+        milktea: ["蜜雪冰城（上海）","喜茶（上海）","奈雪（上海）","一点点（上海）","CoCo（上海）","茶百道（上海）","古茗（上海）","沪上阿姨（上海）","益禾堂（上海）","书亦烧仙草（上海）","瑞幸（上海）","库迪（上海）","星巴克（上海）"],
+        western: ["披萨（上海）","牛排（上海）","意面（上海）","汉堡王（上海）","肯德基（上海）","麦当劳（上海）","炸鸡（上海）","日料（上海）","寿司（上海）"],
+        fastfood: ["肯德基（上海）","麦当劳（上海）","黄焖鸡（上海）","沙县小吃（上海）","麻辣烫（上海）","兰州拉面（上海）","炸鸡（上海）","汉堡（上海）","德克士（上海）","汉堡王（上海）"]
+    },
+    // 北京（可加你家附近的店）
+    "beijing": {
+        all: ["海底捞（北京）","木屋烧烤（北京）","蜜雪冰城（北京）","肯德基（北京）","麦当劳（北京）","星巴克（北京）","麻辣烫（北京）","麻辣香锅（北京）","日料（北京）","烤肉（北京）","披萨（北京）","黄焖鸡（北京）","沙县小吃（北京）","兰州拉面（北京）","炸鸡（北京）","汉堡（北京）","烤鱼（北京）","串串（北京）","冒菜（北京）","螺蛳粉（北京）","寿司（北京）","生腌（北京）","小龙虾（北京）","汉堡王（北京）","德克士（北京）","瑞幸（北京）","库迪（北京）","喜茶（北京）","奈雪（北京）","一点点（北京）","CoCo（北京）","茶百道（北京）","古茗（北京）","沪上阿姨（北京）","益禾堂（北京）","书亦烧仙草（北京）"],
+        hotpot: ["海底捞（北京）","呷哺呷哺（北京）","串串火锅（北京）","重庆火锅（北京）","羊肉火锅（北京）","潮汕牛肉火锅（北京）","寿喜烧（北京）","铜锅涮肉（北京）","冒菜（北京）","麻辣烫（北京）"],
+        bbq: ["木屋烧烤（北京）","烤串（北京）","烤冷面（北京）","烤翅（北京）","烤鱿鱼（北京）","烤生蚝（北京）","烤五花肉（北京）","烤蔬菜（北京）","韩式烤肉（北京）"],
+        milktea: ["蜜雪冰城（北京）","喜茶（北京）","奈雪（北京）","一点点（北京）","CoCo（北京）","茶百道（北京）","古茗（北京）","沪上阿姨（北京）","益禾堂（北京）","书亦烧仙草（北京）","瑞幸（北京）","库迪（北京）","星巴克（北京）"],
+        western: ["披萨（北京）","牛排（北京）","意面（北京）","汉堡王（北京）","肯德基（北京）","麦当劳（北京）","炸鸡（北京）","日料（北京）","寿司（北京）"],
+        fastfood: ["肯德基（北京）","麦当劳（北京）","黄焖鸡（北京）","沙县小吃（北京）","麻辣烫（北京）","兰州拉面（北京）","炸鸡（北京）","汉堡（北京）","德克士（北京）","汉堡王（北京）"]
+    },
+    // 全国通用（定位失败/未知城市时用）
+    "national": {
+        all: ["海底捞","木屋烧烤","蜜雪冰城","肯德基","麦当劳","星巴克","麻辣烫","麻辣香锅","日料","烤肉","披萨","黄焖鸡","沙县小吃","兰州拉面","炸鸡","汉堡","烤鱼","串串","冒菜","螺蛳粉","寿司","生腌","小龙虾","汉堡王","德克士","瑞幸","库迪","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨","益禾堂","书亦烧仙草"],
+        hotpot: ["海底捞","呷哺呷哺","串串火锅","重庆火锅","羊肉火锅","潮汕牛肉火锅","寿喜烧","铜锅涮肉","冒菜","麻辣烫"],
+        bbq: ["木屋烧烤","烤串","烤冷面","烤翅","烤鱿鱼","烤生蚝","烤五花肉","烤蔬菜","韩式烤肉"],
+        milktea: ["蜜雪冰城","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨","益禾堂","书亦烧仙草","瑞幸","库迪","星巴克"],
+        western: ["披萨","牛排","意面","汉堡王","肯德基","麦当劳","炸鸡","日料","寿司"],
+        fastfood: ["肯德基","麦当劳","黄焖鸡","沙县小吃","麻辣烫","兰州拉面","炸鸡","汉堡","德克士","汉堡王"]
+    }
+};
 
-// 切换分类
-document.querySelectorAll('.tag').forEach(t => {
-    t.onclick = () => {
-        document.querySelectorAll('.tag').forEach(s => s.classList.remove('active'));
-        t.classList.add('active');
-        currentKeyword = t.dataset.key;
-        result.innerText = '切换分类：' + currentKeyword;
-    };
-});
+// 全局变量
+let currentType = "all";
+let currentShop = "";
+let currentCityFoods = cityFoods.national; // 默认全国
+const rollBtn = document.getElementById('rollBtn');
+const hateBtn = document.getElementById('hateBtn');
+const resultEl = document.getElementById('result');
 
-// 获取定位 + 搜索附近真实商家
-function getLocation() {
-    result.innerText = '正在获取位置...';
-    navigator.geolocation.getCurrentPosition(pos => {
+// 🔒 初始化：加载本地避雷列表（永久保存，下次打开还能用）
+let hatedList = JSON.parse(localStorage.getItem('k1ana_hated_food')) || [];
+
+// 📍 根据经纬度判断城市（核心：模拟真实定位推荐）
+function getCityByCoords(lat, lng) {
+    // 上海经纬度范围：北纬30°40′-31°53′，东经120°52′-122°12′
+    if (lat >= 30.6667 && lat <= 31.8833 && lng >= 120.8667 && lng <= 122.2) {
+        return "shanghai";
+    }
+    // 北京经纬度范围：北纬39°4′-41°6′，东经115°25′-117°30′
+    else if (lat >= 39.0667 && lat <= 41.1 && lng >= 115.4167 && lng <= 117.5) {
+        return "beijing";
+    }
+    // 可加更多城市（广州、深圳等）
+    // 未知城市，返回全国
+    else {
+        return "national";
+    }
+}
+
+// 1. 初始化定位
+function initLocation() {
+    resultEl.innerHTML = `<span class="loading">正在获取你的位置...</span>`;
+    rollBtn.disabled = true;
+    hateBtn.disabled = true;
+
+    // 调用浏览器原生定位（不用API，纯前端）
+    navigator.geolocation.getCurrentPosition(function(pos) {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        searchNearby(lat, lng, currentKeyword);
-    }, err => {
-        result.innerText = '定位失败，请允许位置权限';
+        // 判断城市
+        const city = getCityByCoords(lat, lng);
+        currentCityFoods = cityFoods[city];
+        // 提示
+        resultEl.innerHTML = `<span>定位成功！已加载${currentCityFoods.all.length}家附近商家，点击按钮随机推荐！</span>`;
+        rollBtn.disabled = false;
+    }, function(err) {
+        // 定位失败，用全国商家
+        currentCityFoods = cityFoods.national;
+        resultEl.innerHTML = `<span>定位失败，已切换全国商家，点击按钮随机推荐！</span>`;
+        rollBtn.disabled = false;
+    }, {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 300000
     });
 }
 
-// 搜索周边3公里商家
-function searchNearby(lat, lng, keyword) {
-    result.innerText = '正在加载附近商家...';
-    const center = new qq.maps.LatLng(lat, lng);
-    const search = new qq.maps.Search({
-        complete: res => {
-            if (!res?.detail?.length) {
-                result.innerText = '未找到商家';
-                return;
-            }
-            shops = res.detail.filter(s => !hated.includes(s.name));
-            result.innerText = `已加载 ${shops.length} 家店`;
-            rollBtn.disabled = false;
-        }
+// 2. 标签切换事件
+document.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', function() {
+        document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentType = this.dataset.type;
+        resultEl.innerHTML = `<span>切换分类成功，点击「随机推荐」抽${this.innerText}！</span>`;
+        hateBtn.disabled = true;
+        currentShop = "";
     });
-    search.searchNearBy(keyword, center, 3000);
-}
+});
 
-// 随机推荐
-rollBtn.onclick = () => {
-    if (!shops.length) return;
-    currentShop = shops[Math.floor(Math.random() * shops.length)];
-    result.innerHTML = `<div class="name">🍽️ ${currentShop.name}</div><div>${currentShop.address || '位置未知'}</div>`;
-    hateBtn.disabled = false;
-};
+// 3. 随机推荐函数
+rollBtn.addEventListener('click', function() {
+    // 过滤掉避雷的店
+    let list = currentCityFoods[currentType].filter(shop => !hatedList.includes(shop));
+    
+    // 避免过滤完没的选，自动清空避雷
+    if (list.length === 0) {
+        hatedList = [];
+        localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
+        list = currentCityFoods[currentType];
+        resultEl.innerHTML = `<span>避雷列表已清空，重新抽！</span>`;
+    }
+    
+    // 随机选一个
+    const randomShop = list[Math.floor(Math.random() * list.length)];
+    currentShop = randomShop;
+    
+    // 显示结果
+    resultEl.innerHTML = `<div class="name">🍽️ ${randomShop}</div>`;
+    hateBtn.disabled = false; // 启用避雷按钮
+});
 
-// 不喜欢这家（避雷）
-hateBtn.onclick = () => {
+// 4. 避雷函数（你要的「逐渐个性化」核心功能）
+hateBtn.addEventListener('click', function() {
     if (!currentShop) return;
-    hated.push(currentShop.name);
-    localStorage.setItem('hated', JSON.stringify(hated));
-    result.innerText = `✅ 已屏蔽：${currentShop.name}`;
-    shops = shops.filter(s => s.name !== currentShop.name);
+    
+    // 加入避雷列表，永久保存
+    hatedList.push(currentShop);
+    localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
+    
+    // 提示
+    resultEl.innerHTML = `<div class="info">✅ 已将「${currentShop}」加入避雷列表，下次不会再推荐！</div>`;
     hateBtn.disabled = true;
-    currentShop = null;
-};
+    currentShop = "";
+});
 
-// 页面加载自动获取定位
-window.onload = getLocation;
+// 5. 页面加载完成后初始化
+window.onload = initLocation;
 </script>
 
 </body>
