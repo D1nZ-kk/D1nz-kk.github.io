@@ -3,394 +3,309 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎲 今晚吃什么？- k1ana.cn</title>
+<title>🍽️ 我的美食随机器 - k1ana.cn</title>
 <style>
 * {margin: 0; padding: 0; box-sizing: border-box;}
 body {
     background: #0a0a0f;
     color: #eaeaea;
     font-family: 'Segoe UI', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     padding: 20px;
+    line-height: 1.4;
 }
-h1 {
-    font-size: 24px;
-    margin-bottom: 10px;
-    color: #ffffff;
-    text-shadow: 0 0 10px #7266ff;
+.container {
+    max-width: 500px;
+    margin: 0 auto;
 }
-.desc {
-    font-size: 14px;
-    color: #888;
-    margin-bottom: 20px;
-}
-.box {
+.card {
     background: #121217;
     border: 1px solid #333;
     border-radius: 16px;
-    padding: 30px;
-    width: 100%;
-    max-width: 480px;
-    box-shadow: 0 0 30px rgba(100,50,20,0.2);
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 20px rgba(100,50,200,0.15);
 }
-.tags {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin: 10px 0 20px;
-}
-.tag {
-    padding: 6px 12px;
-    background: #222;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: .2s;
-}
-.tag.active {
-    background: #7266ff;
+h1 {
+    font-size: 22px;
     color: #fff;
+    text-shadow: 0 0 10px #7266ff;
+    margin-bottom: 8px;
 }
+.desc {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+}
+.upload-area {
+    border: 2px dashed #7266ff;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: 0.2s;
+}
+.upload-area:hover {
+    background: #1a1a24;
+}
+#imgInput {display: none;}
+.ocr-tip {font-size: 13px; color: #aaa; margin-top: 6px;}
+
+/* 随机推荐区域 */
 .result {
-    font-size: 20px;
-    margin: 20px 0;
-    padding: 16px;
     background: #1a1a24;
     border-radius: 10px;
+    padding: 20px;
     text-align: center;
-    min-height: 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-.result .name {
+    font-size: 20px;
     font-weight: bold;
     color: #ff5588;
-    font-size: 22px;
+    margin-bottom: 12px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.result .info {
-    font-size: 14px;
-    color: #aaa;
-}
-.btn-group {
+.btn-row {
     display: flex;
     gap: 10px;
-    margin-top: 10px;
+    margin-bottom: 20px;
 }
 .btn {
     flex: 1;
-    padding: 14px;
+    padding: 12px;
     border: none;
     border-radius: 10px;
     background: linear-gradient(90deg, #7266ff, #ff5588);
-    color: white;
-    font-size: 16px;
+    color: #fff;
     font-weight: bold;
     cursor: pointer;
-    transition: .2s;
 }
-.btn:hover {
-    opacity: .9;
-    transform: scale(1.02);
+.btn.del {background: #333; color: #ff5555;}
+.btn.manual {background: #222; color: #7266ff;}
+
+/* 店铺列表 */
+.list-title {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #ddd;
 }
-.btn.hate {
-    background: #333;
-    color: #ff5555;
-}
-.btn.hate:hover {
-    background: #444;
-}
-.btn:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-    transform: none;
-}
-.loading {
-    color: #7266ff;
-    animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-    0%, 100% {opacity: 1;}
-    50% {opacity: .5;}
-}
-.upload-box {
-    margin: 20px 0;
-    padding: 20px;
-    border: 2px dashed #7266ff;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: .2s;
-}
-.upload-box:hover {
-    background: #1a1a24;
-}
-#imageInput {
-    display: none;
-}
-.ocr-result {
-    margin-top: 10px;
-    padding: 10px;
+.shop-item {
     background: #1a1a24;
     border-radius: 8px;
-    text-align: left;
-    font-size: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.shop-name {flex: 1; font-size: 15px;}
+.shop-edit, .shop-del {
+    background: #282832;
+    border: none;
     color: #aaa;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-left: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.shop-edit {color: #7266ff;}
+.shop-del {color: #ff5555;}
+.empty {text-align: center; color: #666; padding: 20px; font-size: 14px;}
+
+/* 弹窗 */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.modal-box {
+    background: #121217;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+}
+.modal-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+}
+.modal-input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    background: #1a1a24;
+    border: 1px solid #333;
+    color: #fff;
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+.modal-btns {
+    display: flex;
+    gap: 10px;
 }
 </style>
 </head>
 <body>
 
-<div class="box">
-<h1>🎲 今晚吃什么？</h1>
-<p class="desc">真实定位 · 附近商家 · 随机推荐</p>
-<div class="tags">
-<div class="tag active" data-type="all">全部</div>
-<div class="tag" data-type="hotpot">火锅</div>
-<div class="tag" data-type="bbq">烧烤</div>
-<div class="tag" data-type="milktea">奶茶</div>
-<div class="tag" data-type="western">西餐</div>
-<div class="tag" data-type="fastfood">快餐</div>
-</div>
-<div class="result" id="result">
-    <span class="loading">正在获取你的位置...</span>
-</div>
-<div class="btn-group">
-    <button class="btn" id="rollBtn" disabled>🎲 随机推荐</button>
-    <button class="btn hate" id="hateBtn" disabled>❌ 不喜欢</button>
+<div class="container">
+    <div class="card">
+        <h1>🍽️ 我的美食随机器</h1>
+        <p class="desc">截图导入店铺名 · 自定义列表 · 随机不纠结</p>
+
+        <!-- 截图上传识别 -->
+        <label class="upload-area" id="uploadBtn">
+            <p>📸 上传外卖/点评截图导入店铺</p>
+            <p class="ocr-tip">支持饿了么、美团、大众点评</p>
+        </label>
+        <input type="file" id="imgInput" accept="image/*">
+
+        <!-- 随机结果 -->
+        <div class="result" id="result">请先导入店铺～</div>
+
+        <!-- 操作按钮 -->
+        <div class="btn-row">
+            <button class="btn" id="randomBtn">🎲 随机推荐</button>
+            <button class="btn manual" id="addManual">✏️ 手动添加店铺</button>
+        </div>
+
+        <!-- 店铺列表 -->
+        <div class="list-title">📋 我的店铺列表</div>
+        <div id="shopList" class="empty">暂无店铺，快去导入吧～</div>
+    </div>
 </div>
 
-<!-- 外卖截图识别功能 -->
-<div class="upload-box" id="uploadBox">
-    <p>📸 上传外卖截图自动识别商家（支持饿了么/美团）</p>
-    <input type="file" id="imageInput" accept="image/*" capture="environment">
-</div>
-<div id="ocrResult" class="ocr-result" style="display: none;"></div>
+<!-- 修改弹窗 -->
+<div class="modal" id="editModal">
+    <div class="modal-box">
+        <div class="modal-title">修改店铺名</div>
+        <input type="text" class="modal-input" id="editInput">
+        <div class="modal-btns">
+            <button class="btn" id="saveEdit">保存</button>
+            <button class="btn del" id="cancelEdit">取消</button>
+        </div>
+    </div>
 </div>
 
-<!-- 引入腾讯地图JS API（已填你的专属Key，原生服务无跨域） -->
-<script src="https://map.qq.com/api/js?v=2.exp&key=XNTBZ-GQYCA-UZHKE-CNXDR-LAQ22-ZQFWB&plugin=AMap.Geolocation,AMap.PlaceSearch"></script>
+<!-- OCR识别库 -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
 <script>
-// 🔑 已填好你的专属腾讯地图Key，无需修改
-const TENCENT_MAP_KEY = "XNTBZ-GQYCA-UZHKE-CNXDR-LAQ22-ZQFWB";
-// 🌍 搜索半径（米），可修改：1000=1公里，2000=2公里，3000=3公里
-const SEARCH_RADIUS = 2000;
+// 本地存储核心
+let shopList = JSON.parse(localStorage.getItem('myShops')) || [];
+let editingIndex = -1;
 
-// 📦 本地商家库（API失败时兜底，可自定义添加）
-const localFoods = {
-    all: ["海底捞","木屋烧烤","蜜雪冰城","肯德基","麦当劳","星巴克","麻辣烫","麻辣香锅","日料","烤肉","披萨","黄焖鸡","沙县小吃","兰州拉面","炸鸡","汉堡","烤鱼","串串","冒菜","螺蛳粉"],
-    hotpot: ["海底捞","呷哺呷哺","串串火锅","重庆火锅","羊肉火锅","潮汕牛肉火锅","寿喜烧","铜锅涮肉"],
-    bbq: ["木屋烧烤","烤串","烤冷面","烤翅","烤鱿鱼","烤生蚝","韩式烤肉"],
-    milktea: ["蜜雪冰城","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨"],
-    western: ["披萨","牛排","意面","汉堡王","肯德基","麦当劳","日料","寿司"],
-    fastfood: ["肯德基","麦当劳","黄焖鸡","沙县小吃","麻辣烫","兰州拉面","炸鸡","汉堡"]
+// DOM元素
+const uploadBtn = document.getElementById('uploadBtn');
+const imgInput = document.getElementById('imgInput');
+const result = document.getElementById('result');
+const randomBtn = document.getElementById('randomBtn');
+const addManual = document.getElementById('addManual');
+const shopListEl = document.getElementById('shopList');
+const editModal = document.getElementById('editModal');
+const editInput = document.getElementById('editInput');
+const saveEdit = document.getElementById('saveEdit');
+const cancelEdit = document.getElementById('cancelEdit');
+
+// 渲染列表
+function renderList() {
+    if (shopList.length === 0) {
+        shopListEl.innerHTML = '<div class="empty">暂无店铺，快去导入吧～</div>';
+        return;
+    }
+    shopListEl.innerHTML = shopList.map((shop, idx) => `
+        <div class="shop-item">
+            <div class="shop-name">${shop}</div>
+            <div>
+                <button class="shop-edit" onclick="editShop(${idx})">修改</button>
+                <button class="shop-del" onclick="delShop(${idx})">删除</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 保存到本地
+function saveShops() {
+    localStorage.setItem('myShops', JSON.stringify(shopList));
+    renderList();
+}
+
+// 随机推荐
+randomBtn.onclick = () => {
+    if (shopList.length === 0) {
+        result.innerText = '请先导入店铺哦～';
+        return;
+    }
+    const rnd = shopList[Math.floor(Math.random() * shopList.length)];
+    result.innerText = rnd;
 };
 
-// 全局变量
-let currentType = "all";
-let currentShop = "";
-let nearbyShops = []; // 存储真实附近商家
-let currentFoods = localFoods; // 默认本地
-const rollBtn = document.getElementById('rollBtn');
-const hateBtn = document.getElementById('hateBtn');
-const resultEl = document.getElementById('result');
-const uploadBox = document.getElementById('uploadBox');
-const imageInput = document.getElementById('imageInput');
-const ocrResultEl = document.getElementById('ocrResult');
-
-// 🔒 初始化避雷列表（本地永久存储）
-let hatedList = JSON.parse(localStorage.getItem('k1ana_hated_food')) || [];
-
-// 1. 初始化定位和附近商家（腾讯地图原生服务，彻底解决跨域）
-function initLocation() {
-    resultEl.innerHTML = `<span class="loading">正在获取你的位置...</span>`;
-    rollBtn.disabled = true;
-    hateBtn.disabled = true;
-
-    // 创建隐藏地图容器（腾讯地图JS API必须）
-    const mapContainer = document.createElement('div');
-    mapContainer.id = 'mapContainer';
-    mapContainer.style.display = 'none';
-    document.body.appendChild(mapContainer);
-    const map = new qq.maps.Map(mapContainer, {zoom: 15});
-
-    // 腾讯地图原生定位服务（无跨域）
-    const geolocation = new qq.maps.Geolocation({
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 300000
-    });
-
-    geolocation.getCurrentPosition(function(pos) {
-        const lat = pos.latLng.getLat();
-        const lng = pos.latLng.getLng();
-        const center = new qq.maps.LatLng(lat, lng);
-        map.setCenter(center);
-
-        resultEl.innerHTML = `<span class="loading">正在加载附近${SEARCH_RADIUS/1000}公里商家...</span>`;
-
-        // 腾讯地图原生PlaceSearch服务（无跨域，官方原生）
-        const search = new qq.maps.Search({
-            map: map,
-            pageCapacity: 20,
-            onComplete: function(res) {
-                if (res.type === "complete" && res.pois.length > 0) {
-                    // 成功获取真实商家，自动分类
-                    nearbyShops = res.pois.map(item => item.title);
-                    currentFoods = {
-                        all: nearbyShops,
-                        hotpot: nearbyShops.filter(shop => /火锅|串串|涮肉/.test(shop)),
-                        bbq: nearbyShops.filter(shop => /烧烤|烤肉|烤串/.test(shop)),
-                        milktea: nearbyShops.filter(shop => /奶茶|咖啡|茶饮/.test(shop)),
-                        western: nearbyShops.filter(shop => /西餐|披萨|牛排|日料|寿司/.test(shop)),
-                        fastfood: nearbyShops.filter(shop => /快餐|汉堡|炸鸡|沙县|拉面/.test(shop))
-                    };
-                    resultEl.innerHTML = `<span>定位成功！已加载${nearbyShops.length}家真实附近商家，点击按钮随机推荐！</span>`;
-                } else {
-                    // API返回空，自动切换本地商家兜底
-                    currentFoods = localFoods;
-                    resultEl.innerHTML = `<span>附近商家较少，已切换本地推荐，点击按钮随机推荐！</span>`;
-                }
-                rollBtn.disabled = false;
-            },
-            onError: function() {
-                // API异常，自动切换本地商家，永远不崩
-                currentFoods = localFoods;
-                resultEl.innerHTML = `<span>网络异常，已切换本地推荐，点击按钮随机推荐！</span>`;
-                rollBtn.disabled = false;
-            }
-        });
-
-        // 原生搜索附近商家（无跨域，浏览器完全放行）
-        search.searchNearBy("餐饮", center, SEARCH_RADIUS);
-    }, function() {
-        // 定位失败，自动切换本地商家
-        currentFoods = localFoods;
-        resultEl.innerHTML = `<span>定位失败，已切换本地推荐，点击按钮随机推荐！</span>`;
-        rollBtn.disabled = false;
-    });
-}
-
-// 2. 分类标签切换
-document.querySelectorAll('.tag').forEach(tag => {
-    tag.addEventListener('click', function() {
-        document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        currentType = this.dataset.type;
-        resultEl.innerHTML = `<span>切换分类成功，点击「随机推荐」抽${this.innerText}！</span>`;
-        hateBtn.disabled = true;
-        currentShop = "";
-    });
-});
-
-// 3. 随机推荐功能
-rollBtn.addEventListener('click', function() {
-    // 过滤避雷商家
-    let list = currentFoods[currentType].filter(shop => !hatedList.includes(shop));
-    
-    // 避雷过多自动清空，避免无店可抽
-    if (list.length === 0) {
-        hatedList = [];
-        localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
-        list = currentFoods[currentType];
-        resultEl.innerHTML = `<span>避雷列表已清空，重新抽！</span>`;
-    }
-    
-    // 随机抽取
-    const randomShop = list[Math.floor(Math.random()*list.length)];
-    currentShop = randomShop;
-    resultEl.innerHTML = `<div class="name">🍽️ ${randomShop}</div>`;
-    hateBtn.disabled = false;
-});
-
-// 4. 避雷功能（永久存储，越用越懂你）
-hateBtn.addEventListener('click', function() {
-    if (!currentShop) return;
-    
-    hatedList.push(currentShop);
-    localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
-    resultEl.innerHTML = `<div class="info">✅ 已将「${currentShop}」加入避雷列表，下次不会再推荐！</div>`;
-    hateBtn.disabled = true;
-    currentShop = "";
-});
-
-// 5. 外卖截图OCR识别（纯前端，无需后端）
-uploadBox.addEventListener('click', function() {
-    imageInput.click();
-});
-
-imageInput.addEventListener('change', async function(e) {
-    if (!e.target.files[0]) return;
-    
+// 截图上传
+uploadBtn.onclick = () => imgInput.click();
+imgInput.onchange = async (e) => {
     const file = e.target.files[0];
-    ocrResultEl.style.display = 'block';
-    ocrResultEl.innerHTML = `<span class="loading">正在识别截图...</span>`;
-    
+    if (!file) return;
+    result.innerText = '正在识别截图...';
     try {
-        // 调用Tesseract.js识别中英文
-        const { data: { text } } = await Tesseract.recognize(
-            file,
-            'chi_sim+eng',
-            { logger: m => console.log(m) }
-        );
+        const { data: { text } } = await Tesseract.recognize(file, 'chi_sim+eng');
+        // 简单提取店名（取有效行）
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l && l.length > 2 && !/订单|编号|时间|配送|￥/.test(l));
+        const shopName = lines[0] || '未识别到店名';
         
-        // 提取商家名称（适配美团/饿了么截图规则）
-        let shopName = "";
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-        
-        // 优先提取非订单信息的首行商家名
-        for (let i = 0; i < Math.min(5, lines.length); i++) {
-            if (!lines[i].includes('订单') && !lines[i].includes('编号') && !lines[i].includes('时间') && lines[i].length > 2) {
-                shopName = lines[i];
-                break;
-            }
+        if (!shopList.includes(shopName)) {
+            shopList.push(shopName);
+            saveShops();
+            result.innerText = `✅ 导入成功：${shopName}`;
+        } else {
+            result.innerText = `⚠️ 已存在：${shopName}`;
         }
-        // 兜底提取
-        shopName = shopName || lines[0] || "未识别到商家";
-        
-        ocrResultEl.innerHTML = `
-            <p>📝 识别结果：</p>
-            <p>🏪 商家名称：<span style="color:#ff5588;">${shopName}</span></p>
-            <p>📋 完整文本：<br>${text.substring(0, 300)}${text.length > 300 ? '...' : ''}</p>
-            <button class="btn" style="width:100%;margin-top:10px;" onclick="addShopToFoods('${encodeURIComponent(shopName)}')">➕ 添加到推荐库</button>
-        `;
     } catch (err) {
-        ocrResultEl.innerHTML = `<span style="color:#ff5555;">识别失败：${err.message}</span>`;
+        result.innerText = '识别失败，重试或手动添加';
     }
-});
+};
 
-// 全局方法：添加识别的商家到推荐库
-function addShopToFoods(encodedShopName) {
-    const shopName = decodeURIComponent(encodedShopName);
-    if (!shopName || shopName === "未识别到商家") return;
-    
-    if (!currentFoods.all.includes(shopName)) {
-        currentFoods.all.push(shopName);
-        // 自动分类
-        if (/火锅|串串|涮肉/.test(shopName)) currentFoods.hotpot.push(shopName);
-        if (/烧烤|烤肉|烤串/.test(shopName)) currentFoods.bbq.push(shopName);
-        if (/奶茶|咖啡|茶饮/.test(shopName)) currentFoods.milktea.push(shopName);
-        if (/西餐|披萨|牛排|日料|寿司/.test(shopName)) currentFoods.western.push(shopName);
-        if (/快餐|汉堡|炸鸡|沙县|拉面/.test(shopName)) currentFoods.fastfood.push(shopName);
-        
-        resultEl.innerHTML = `<span>✅ 已添加「${shopName}」到推荐库，现在可以随机推荐啦！</span>`;
-        ocrResultEl.style.display = 'none';
-    } else {
-        resultEl.innerHTML = `<span>「${shopName}」已在推荐库中！</span>`;
+// 手动添加
+addManual.onclick = () => {
+    const name = prompt('请输入店铺名：');
+    if (name && name.trim() && !shopList.includes(name.trim())) {
+        shopList.push(name.trim());
+        saveShops();
+        result.innerText = `✅ 手动添加成功：${name.trim()}`;
     }
-}
+};
 
-// 页面加载自动初始化
-window.onload = initLocation;
+// 修改店铺
+window.editShop = (idx) => {
+    editingIndex = idx;
+    editInput.value = shopList[idx];
+    editModal.style.display = 'flex';
+};
+saveEdit.onclick = () => {
+    const val = editInput.value.trim();
+    if (val && !shopList.includes(val)) {
+        shopList[editingIndex] = val;
+        saveShops();
+        editModal.style.display = 'none';
+        result.innerText = `✅ 修改成功：${val}`;
+    }
+};
+cancelEdit.onclick = () => editModal.style.display = 'none';
+
+// 删除店铺
+window.delShop = (idx) => {
+    if (confirm('确定删除该店铺？')) {
+        shopList.splice(idx, 1);
+        saveShops();
+        result.innerText = '🗑️ 已删除';
+    }
+};
+
+// 初始化
+renderList();
 </script>
-
 </body>
 </html>
