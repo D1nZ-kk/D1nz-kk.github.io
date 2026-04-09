@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ 我的美食随机器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0f;
+            color: #eaeaea;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 520px; margin: 0 auto; }
+
+        .card {
+            background: #121217;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 0 20px rgba(114, 102, 255, 0.15);
+        }
+
+        h1 { font-size: 22px; color: #fff; text-shadow: 0 0 10px #7266ff; margin-bottom: 8px; }
+        .desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+
+        .ocr-status {
+            font-size: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ocr-status.ready { color: #4ade80; border-color: rgba(74, 222, 128, 0.3); }
+        .ocr-status.loading { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+        .ocr-status.error { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+
+        .upload-area {
+            border: 2px dashed #7266ff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            background: rgba(114, 102, 255, 0.05);
+        }
+
+        .upload-area:hover { background: rgba(114, 102, 255, 0.1); border-color: #8a7aff; }
+        .upload-area.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .upload-icon { font-size: 32px; margin-bottom: 8px; }
+        .upload-text { font-size: 14px; color: #eaeaea; margin-bottom: 4px; }
+        .upload-tip { font-size: 12px; color: #888; }
+
+        #imgInput { display: none; }
+
+        /* 分类筛选器 */
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .category-tag {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            background: #1a1a24;
+            border: 1px solid #333;
+            color: #888;
+            transition: all 0.2s;
+        }
+
+        .category-tag:hover { border-color: #7266ff; color: #eaeaea; }
+        .category-tag.active {
+            background: linear-gradient(90deg, #7266ff, #ff5588);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .category-manage-btn {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            background: transparent;
+            border: 1px dashed #555;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .category-manage-btn:hover { border-color: #7266ff; color: #7266ff; }
+
+        .result {
+            background: linear-gradient(135deg, #1a1a24 0%, #1f1f2e 100%);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff5588;
+            margin-bottom: 16px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 85, 136, 0.2);
+        }
+
+        .btn-row { display: flex; gap: 10px; margin-bottom: 20px; }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #7266ff, #ff5588);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(114, 102, 255, 0.4); }
+        .btn.secondary { background: #333; color: #ff5555; }
+        .btn.secondary:hover { background: #444; }
+        .btn.outline { background: #222; color: #7266ff; border: 1px solid #7266ff; }
+        .btn.outline:hover { background: #2a2a35; }
+        .btn.small { padding: 10px 16px; font-size: 13px; }
+
+        .list-title { font-size: 16px; margin-bottom: 12px; color: #ddd; font-weight: 600; }
+
+        .shop-item {
+            background: #1a1a24;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #2a2a35;
+            transition: all 0.2s;
+        }
+
+        .shop-item:hover { border-color: #7266ff; background: #1f1f2e; }
+
+        .shop-info { flex: 1; display: flex; align-items: center; gap: 10px; }
+        .shop-name { font-size: 15px; color: #eaeaea; }
+        .shop-category {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(114, 102, 255, 0.2);
+            color: #7266ff;
+            white-space: nowrap;
+        }
+
+        .shop-btns { display: flex; gap: 6px; }
+
+        .shop-edit, .shop-del {
+            background: #282832;
+            border: none;
+            color: #aaa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .shop-edit { color: #7266ff; }
+        .shop-edit:hover { background: #7266ff; color: #fff; }
+        .shop-del { color: #ff5555; }
+        .shop-del:hover { background: #ff5555; color: #fff; }
+
+        .empty {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-size: 14px;
+            background: #1a1a24;
+            border-radius: 8px;
+            border: 1px dashed #333;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-box {
+            background: #121217;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 540px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .modal-title { font-size: 18px; margin-bottom: 16px; color: #fff; font-weight: 600; }
+
+        .modal-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            color: #fff;
+            margin-bottom: 12px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .modal-input:focus { border-color: #7266ff; }
+
+        .modal-label { font-size: 13px; color: #888; margin-bottom: 8px; display: block; }
+
+        .modal-category {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .modal-category .category-tag {
+            font-size: 12px;
+            padding: 5px 12px;
+        }
+
+        .modal-btns { display: flex; gap: 10px; }
+        .modal-btns .btn { flex: 1; }
+        .modal-btns .btn:first-child { background: #333; color: #aaa; }
+        .modal-btns .btn:first-child:hover { background: #444; }
+
+        .preview-container {
+            margin-bottom: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1a1a24;
+            max-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-container img { max-width: 100%; max-height: 150px; object-fit: contain; }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #1a1a24;
+            border-radius: 3px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7266ff, #ff5588);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .progress-text { font-size: 13px; color: #888; text-align: center; margin-bottom: 16px; }
+
+        /* OCR原始文本 */
+        .ocr-raw-box {
+            background: #1a1a24;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .ocr-raw-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .ocr-raw-title { font-size: 12px; color: #7266ff; }
+        .ocr-raw-actions { display: flex; gap: 8px; }
+
+        .copy-btn {
+            font-size: 11px;
+            padding: 4px 10px;
+            background: #333;
+            border: none;
+            border-radius: 4px;
+            color: #888;
+            cursor: pointer;
+        }
+        .copy-btn:hover { background: #444; color: #fff; }
+
+        .ocr-raw-text {
+            font-size: 11px;
+            color: #aaa;
+            max-height: 180px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+            font-family: monospace;
+            background: #0a0a0f;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        /* 行选择器 */
+        .line-selector { margin-bottom: 16px; }
+        .line-selector-title { font-size: 12px; color: #888; margin-bottom: 8px; }
+
+        .line-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .line-item:hover { border-color: #7266ff; }
+        .line-item.selected { border-color: #7266ff; background: rgba(114, 102, 255, 0.1); }
+
+        .line-checkbox { width: 18px; height: 18px; accent-color: #7266ff; }
+
+        .line-text {
+            flex: 1;
+            font-size: 13px;
+            color: #eaeaea;
+            word-break: break-all;
+        }
+
+        .result-count { font-size: 12px; color: #888; margin-bottom: 12px; }
+
+        .result-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .result-actions .btn { padding: 10px 16px; font-size: 13px; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 8px;
+            background: #1a1a24;
+            border: none;
+            border-radius: 6px;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active { background: #7266ff; color: #fff; }
+
+        /* 导入时的分类选择 */
+        .import-category-select {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #1a1a24;
+            border-radius: 8px;
+        }
+
+        .import-category-select .category-tag { font-size: 12px; padding: 5px 12px; }
+
+        /* 分类管理弹窗 */
+        .category-list {
+            margin-bottom: 16px;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            background: #1a1a24;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .category-item-name { font-size: 14px; color: #eaeaea; }
+
+        .category-item-actions { display: flex; gap: 8px; }
+
+        .category-item-count {
+            font-size: 12px;
+            color: #888;
+            margin-left: 8px;
+        }
+
+        .category-del-btn {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: transparent;
+            border: 1px solid #ff5555;
+            color: #ff5555;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .category-del-btn:hover { background: #ff5555; color: #fff; }
+        .category-del-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .add-category-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .add-category-row .modal-input { flex: 1; margin-bottom: 0; }
+
+        .system-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: rgba(255, 85, 136, 0.2);
+            color: #ff5588;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .card { padding: 20px; }
+            .btn-row { flex-direction: column; }
+            .shop-name { font-size: 14px; }
+            .modal-box { padding: 20px; }
+            .category-filter { gap: 6px; }
+            .category-tag { font-size: 12px; padding: 5px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🍽️ 我的美食随机器</h1>
+            <p class="desc">截图导入店铺名 · 分类管理 · 随机不纠结</p>
+
+            <div class="ocr-status loading" id="ocrStatus">
+                <span>⏳</span>
+                <span>正在加载文字识别引擎...</span>
+            </div>
+
+            <div class="upload-area disabled" id="uploadBtn">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击上传外卖/点评截图</div>
+                <div class="upload-tip">支持饿了么、美团、大众点评</div>
+            </div>
+            <input type="file" id="imgInput" accept="image/*">
+
+            <!-- 分类筛选 -->
+            <div class="category-filter" id="categoryFilter"></div>
+
+            <div class="result" id="result">请先导入店铺～</div>
+
+            <div class="btn-row">
+                <button class="btn" id="randomBtn">🎲 随机推荐</button>
+                <button class="btn secondary" id="clearBtn">🗑️ 清空列表</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn outline" id="addManual">✏️ 手动添加店铺</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="list-title">📋 我的店铺列表 <span id="shopCount" style="font-size: 14px; color: #888; font-weight: normal;">(0)</span></h2>
+            <div id="shopList"><div class="empty">暂无店铺，快去导入吧～</div></div>
+        </div>
+    </div>
+
+    <!-- 截图识别弹窗 -->
+    <div class="modal" id="importModal">
+        <div class="modal-box">
+            <h3 class="modal-title">📸 识别截图中的店铺</h3>
+            <div class="preview-container" id="previewContainer"></div>
+            
+            <div id="recognizeProgress">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <div class="progress-text" id="progressText">准备识别...</div>
+            </div>
+
+            <div class="ocr-raw-box" id="ocrRawBox" style="display: none;">
+                <div class="ocr-raw-header">
+                    <div class="ocr-raw-title">📝 OCR识别的原始文本</div>
+                    <div class="ocr-raw-actions">
+                        <button class="copy-btn" id="copyOcrBtn">复制</button>
+                    </div>
+                </div>
+                <div class="ocr-raw-text" id="ocrRawText"></div>
+            </div>
+
+            <div class="line-selector" id="lineSelector" style="display: none;">
+                <div class="tabs">
+                    <button class="tab active" id="tabAuto">自动提取</button>
+                    <button class="tab" id="tabManual">手动选行</button>
+                </div>
+                
+                <div id="autoResult">
+                    <div class="result-count" id="resultCount">识别到 0 个店铺</div>
+                    <div id="resultItems"></div>
+                </div>
+
+                <div id="manualSelect" style="display: none;">
+                    <div class="line-selector-title">点击勾选是店铺名的行：</div>
+                    <div id="lineItems"></div>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn outline" id="selectAllBtn">全选</button>
+                    <button class="btn outline" id="addManualBtn">+ 手动添加</button>
+                </div>
+            </div>
+
+            <div class="import-category-select" id="importCategorySelect" style="display: none;">
+                <span style="font-size: 13px; color: #888; width: 100%; margin-bottom: 8px;">🏷️ 为所选店铺设置分类：</span>
+            </div>
+
+            <div class="modal-btns" id="importBtns" style="display: none;">
+                <button class="btn" id="cancelImport">取消</button>
+                <button class="btn" id="confirmImport">添加所选</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div class="modal" id="editModal">
+        <div class="modal-box">
+            <h3 class="modal-title">修改店铺</h3>
+            <label class="modal-label">店铺名称</label>
+            <input type="text" class="modal-input" id="editInput" placeholder="输入新的店铺名">
+            <label class="modal-label">分类标签</label>
+            <div class="modal-category" id="editCategory"></div>
+            <div class="modal-btns">
+                <button class="btn" id="cancelEdit">取消</button>
+                <button class="btn" id="saveEdit">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手动添加弹窗 -->
+    <div class="modal" id="addModal">
+        <div class="modal-box">
+            <h3 class="modal-title">添加店铺</h3>
+            <label class="modal-label">店铺名称</label>
+            <input type="text" class="modal-input" id="addInput" placeholder="输入店铺名">
+            <label class="modal-label">分类标签</label>
+            <div class="modal-category" id="addCategory"></div>
+            <div class="modal-btns">
+                <button class="btn" id="cancelAdd">取消</button>
+                <button class="btn" id="saveAdd">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分类管理弹窗 -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-box">
+            <h3 class="modal-title">🏷️ 管理分类标签</h3>
+            <div class="category-list" id="categoryList"></div>
+            <div class="add-category-row">
+                <input type="text" class="modal-input" id="newCategoryInput" placeholder="输入新分类名称">
+                <button class="btn small" id="addCategoryBtn">添加</button>
+            </div>
+            <div class="modal-btns" style="margin-top: 16px;">
+                <button class="btn" id="closeCategoryModal" style="width: 100%;">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script>
+        // 默认分类（首次使用）
+        const DEFAULT_CATEGORIES = ['全部', '快餐', '麻辣烫', '奶茶', '火锅', '烧烤', '日料', '西餐', '甜点', '其他'];
+        const SYSTEM_CATEGORIES = ['全部', '其他']; // 不可删除的系统分类
+        
+        // 分类列表（可持久化）
+        let categories = [];
+        
+        // 数据结构：[{ name: '店铺名', category: '分类' }]
+        let shopList = [];
+        let editingIndex = -1;
+        let ocrReady = false;
+        let recognizedShops = [];
+        let allLines = [];
+        let lastOcrText = '';
+        let currentCategory = '全部';
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        const imgInput = document.getElementById('imgInput');
+        const result = document.getElementById('result');
+        const randomBtn = document.getElementById('randomBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const addManual = document.getElementById('addManual');
+        const shopListEl = document.getElementById('shopList');
+        const shopCount = document.getElementById('shopCount');
+        const ocrStatus = document.getElementById('ocrStatus');
+        const categoryFilter = document.getElementById('categoryFilter');
+
+        const importModal = document.getElementById('importModal');
+        const previewContainer = document.getElementById('previewContainer');
+        const recognizeProgress = document.getElementById('recognizeProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const ocrRawBox = document.getElementById('ocrRawBox');
+        const ocrRawText = document.getElementById('ocrRawText');
+        const copyOcrBtn = document.getElementById('copyOcrBtn');
+        const lineSelector = document.getElementById('lineSelector');
+        const tabAuto = document.getElementById('tabAuto');
+        const tabManual = document.getElementById('tabManual');
+        const autoResult = document.getElementById('autoResult');
+        const manualSelect = document.getElementById('manualSelect');
+        const resultCount = document.getElementById('resultCount');
+        const resultItems = document.getElementById('resultItems');
+        const lineItems = document.getElementById('lineItems');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const addManualBtn = document.getElementById('addManualBtn');
+        const confirmImport = document.getElementById('confirmImport');
+        const cancelImport = document.getElementById('cancelImport');
+        const importBtns = document.getElementById('importBtns');
+        const importCategorySelect = document.getElementById('importCategorySelect');
+
+        const editModal = document.getElementById('editModal');
+        const editInput = document.getElementById('editInput');
+        const editCategory = document.getElementById('editCategory');
+        const saveEdit = document.getElementById('saveEdit');
+        const cancelEdit = document.getElementById('cancelEdit');
+
+        const addModal = document.getElementById('addModal');
+        const addInput = document.getElementById('addInput');
+        const addCategory = document.getElementById('addCategory');
+        const saveAdd = document.getElementById('saveAdd');
+        const cancelAdd = document.getElementById('cancelAdd');
+
+        const categoryModal = document.getElementById('categoryModal');
+        const categoryList = document.getElementById('categoryList');
+        const newCategoryInput = document.getElementById('newCategoryInput');
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const closeCategoryModal = document.getElementById('closeCategoryModal');
+
+        // 加载分类
+        function loadCategories() {
+            const saved = localStorage.getItem('foodCategories');
+            if (saved) {
+                try {
+                    categories = JSON.parse(saved);
+                } catch (e) {
+                    categories = [...DEFAULT_CATEGORIES];
+                }
+            } else {
+                categories = [...DEFAULT_CATEGORIES];
+            }
+            saveCategories();
+        }
+
+        function saveCategories() {
+            localStorage.setItem('foodCategories', JSON.stringify(categories));
+        }
+
+        // 迁移旧数据格式
+        function migrateData() {
+            const saved = localStorage.getItem('foodShops');
+            if (!saved) return [];
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.length > 0 && typeof parsed[0] === 'string') {
+                    return parsed.map(name => ({ name, category: '其他' }));
+                }
+                return parsed;
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // 初始化分类筛选器
+        function initCategoryFilter() {
+            let html = categories.map(cat => 
+                `<span class="category-tag ${cat === currentCategory ? 'active' : ''}" data-category="${cat}">${cat}</span>`
+            ).join('');
+            
+            html += `<span class="category-manage-btn" id="manageCategoryBtn">⚙️ 管理</span>`;
+            
+            categoryFilter.innerHTML = html;
+
+            categoryFilter.querySelectorAll('.category-tag').forEach(tag => {
+                tag.onclick = () => {
+                    currentCategory = tag.dataset.category;
+                    initCategoryFilter();
+                    renderList();
+                };
+            });
+
+            document.getElementById('manageCategoryBtn').onclick = openCategoryModal;
+        }
+
+        // 初始化分类选择器（用于弹窗）
+        function initCategorySelector(container, selected) {
+            const cats = categories.filter(c => c !== '全部');
+            container.innerHTML = cats.map(cat => 
+                `<span class="category-tag ${cat === selected ? 'active' : ''}" data-category="${cat}">${cat}</span>`
+            ).join('');
+
+            container.querySelectorAll('.category-tag').forEach(tag => {
+                tag.onclick = () => {
+                    container.querySelectorAll('.category-tag').forEach(t => t.classList.remove('active'));
+                    tag.classList.add('active');
+                };
+            });
+        }
+
+        // 获取选中的分类
+        function getSelectedCategory(container) {
+            const active = container.querySelector('.category-tag.active');
+            return active ? active.dataset.category : '其他';
+        }
+
+        // 打开分类管理弹窗
+        function openCategoryModal() {
+            renderCategoryList();
+            categoryModal.style.display = 'flex';
+        }
+
+        // 渲染分类列表
+        function renderCategoryList() {
+            categoryList.innerHTML = categories.map(cat => {
+                const isSystem = SYSTEM_CATEGORIES.includes(cat);
+                const count = cat === '全部' ? shopList.length : shopList.filter(s => s.category === cat).length;
+                
+                return `
+                    <div class="category-item">
+                        <div>
+                            <span class="category-item-name">${cat}</span>
+                            <span class="category-item-count">(${count}家店铺)</span>
+                            ${isSystem ? '<span class="system-tag">系统</span>' : ''}
+                        </div>
+                        <div class="category-item-actions">
+                            ${!isSystem ? `<button class="category-del-btn" data-category="${cat}">删除</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 绑定删除事件
+            categoryList.querySelectorAll('.category-del-btn').forEach(btn => {
+                btn.onclick = () => deleteCategory(btn.dataset.category);
+            });
+        }
+
+        // 添加分类
+        function addCategory() {
+            const name = newCategoryInput.value.trim();
+            if (!name) { alert('请输入分类名称'); return; }
+            if (categories.includes(name)) { alert('该分类已存在'); return; }
+            
+            // 在"其他"前面插入
+            const otherIdx = categories.indexOf('其他');
+            if (otherIdx > 0) {
+                categories.splice(otherIdx, 0, name);
+            } else {
+                categories.push(name);
+            }
+            
+            saveCategories();
+            newCategoryInput.value = '';
+            renderCategoryList();
+            initCategoryFilter();
+        }
+
+        // 删除分类
+        function deleteCategory(name) {
+            const count = shopList.filter(s => s.category === name).length;
+            if (count > 0) {
+                if (!confirm(`「${name}」下有 ${count} 家店铺，删除后这些店铺将归入「其他」分类，确定删除？`)) {
+                    return;
+                }
+                // 将该分类下的店铺改为"其他"
+                shopList.forEach(s => {
+                    if (s.category === name) s.category = '其他';
+                });
+                saveShops();
+            }
+            
+            categories = categories.filter(c => c !== name);
+            saveCategories();
+            
+            // 如果当前选中的分类被删除，切换到"全部"
+            if (currentCategory === name) {
+                currentCategory = '全部';
+            }
+            
+            renderCategoryList();
+            initCategoryFilter();
+            renderList();
+        }
+
+        addCategoryBtn.onclick = addCategory;
+        newCategoryInput.onkeyup = (e) => { if (e.key === 'Enter') addCategory(); };
+        closeCategoryModal.onclick = () => categoryModal.style.display = 'none';
+        categoryModal.onclick = (e) => { if (e.target === categoryModal) categoryModal.style.display = 'none'; };
+
+        async function initOcr() {
+            try {
+                updateOcrStatus('loading', '⏳', '正在加载文字识别引擎...');
+                
+                // 添加超时保护
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('OCR加载超时')), 60000);
+                });
+                
+                const workerPromise = Tesseract.createWorker('chi_sim+eng', 1, {
+                    logger: m => {
+                        if (m.status === 'loading tesseract core') updateOcrStatus('loading', '⏳', '加载OCR核心...');
+                        else if (m.status === 'initializing tesseract') updateOcrStatus('loading', '⏳', '初始化引擎...');
+                        else if (m.status === 'loading language traineddata') updateOcrStatus('loading', '⏳', '加载语言包...');
+                        else if (m.status === 'initializing api') updateOcrStatus('loading', '⏳', '准备就绪...');
+                    }
+                });
+                
+                const worker = await Promise.race([workerPromise, timeoutPromise]);
+                window.tesseractWorker = worker;
+                ocrReady = true;
+                updateOcrStatus('ready', '✅', '文字识别已就绪');
+                uploadBtn.classList.remove('disabled');
+            } catch (err) {
+                console.error('OCR初始化失败:', err);
+                updateOcrStatus('error', '⚠️', 'OCR加载失败，可手动添加店铺');
+                uploadBtn.classList.remove('disabled'); // 即使OCR失败也允许手动添加
+            }
+        }
+
+        function updateOcrStatus(type, icon, text) {
+            ocrStatus.className = `ocr-status ${type}`;
+            ocrStatus.innerHTML = `<span>${icon}</span><span>${text}</span>`;
+        }
+
+        function renderList() {
+            const filtered = currentCategory === '全部' 
+                ? shopList 
+                : shopList.filter(s => s.category === currentCategory);
+
+            shopCount.textContent = `(${filtered.length}/${shopList.length})`;
+
+            if (filtered.length === 0) {
+                shopListEl.innerHTML = `<div class="empty">${currentCategory === '全部' ? '暂无店铺，快去导入吧～' : `暂无「${currentCategory}」分类的店铺`}</div>`;
+                return;
+            }
+
+            shopListEl.innerHTML = filtered.map((shop, idx) => {
+                const realIdx = shopList.indexOf(shop);
+                return `
+                    <div class="shop-item">
+                        <div class="shop-info">
+                            <span class="shop-name">${shop.name}</span>
+                            <span class="shop-category">${shop.category}</span>
+                        </div>
+                        <div class="shop-btns">
+                            <button class="shop-edit" onclick="editShop(${realIdx})">修改</button>
+                            <button class="shop-del" onclick="delShop(${realIdx})">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function saveShops() {
+            localStorage.setItem('foodShops', JSON.stringify(shopList));
+            renderList();
+        }
+
+        function showResult(text, isError = false) {
+            result.innerHTML = text;
+            result.style.color = isError ? '#ff5555' : '#ff5588';
+        }
+
+        randomBtn.onclick = () => {
+            const filtered = currentCategory === '全部' 
+                ? shopList 
+                : shopList.filter(s => s.category === currentCategory);
+
+            if (filtered.length === 0) { 
+                showResult(currentCategory === '全部' ? '❌ 请先导入店铺' : `❌ 「${currentCategory}」分类暂无店铺`, true); 
+                return; 
+            }
+
+            let count = 0;
+            const interval = setInterval(() => {
+                const rnd = filtered[Math.floor(Math.random() * filtered.length)];
+                result.innerHTML = `🎲 ${rnd.name}`;
+                if (++count >= 12) {
+                    clearInterval(interval);
+                    const final = filtered[Math.floor(Math.random() * filtered.length)];
+                    showResult(`🎉 今天吃：${final.name} <span style="font-size:14px;color:#888;margin-left:8px;">[${final.category}]</span>`);
+                }
+            }, 80);
+        };
+
+        clearBtn.onclick = () => {
+            if (shopList.length === 0) { showResult('❌ 列表已经是空的', true); return; }
+            if (confirm('确定要清空所有店铺吗？')) {
+                shopList = [];
+                saveShops();
+                showResult('🗑️ 已清空列表');
+            }
+        };
+
+        uploadBtn.onclick = () => {
+            if (!ocrReady) { alert('OCR引擎还未就绪'); return; }
+            imgInput.click();
+        };
+
+        imgInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                previewContainer.innerHTML = `<img src="${event.target.result}" alt="预览">`;
+                recognizeProgress.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressText.textContent = '准备识别...';
+                ocrRawBox.style.display = 'none';
+                lineSelector.style.display = 'none';
+                importBtns.style.display = 'none';
+                importCategorySelect.style.display = 'none';
+                recognizedShops = [];
+                importModal.style.display = 'flex';
+                await recognizeImage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+            imgInput.value = '';
+        };
+
+        async function recognizeImage(imageData) {
+            if (!ocrReady) { progressText.textContent = '❌ OCR未就绪'; return; }
+
+            try {
+                progressText.textContent = '正在识别文字...';
+                progressFill.style.width = '30%';
+
+                const { data: { text } } = await window.tesseractWorker.recognize(imageData);
+                
+                progressFill.style.width = '100%';
+                progressText.textContent = '识别完成！';
+
+                lastOcrText = text;
+                allLines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+                ocrRawText.textContent = text;
+                ocrRawBox.style.display = 'block';
+
+                console.log('=== OCR原始文本 ===\n', text);
+
+                recognizedShops = extractShopNames(text);
+                
+                setTimeout(() => {
+                    recognizeProgress.style.display = 'none';
+                    showResults();
+                }, 300);
+
+            } catch (err) {
+                console.error('识别错误:', err);
+                progressText.textContent = `❌ 识别失败: ${err.message}`;
+            }
+        }
+
+        function extractShopNames(text) {
+            const shops = [];
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+            const filterPatterns = [
+                /^\d+$/, /^[¥￥$]/, /^预计|^月售|^距离|^分钟|^公里|^米/,
+                /订单|配送|支付|时间|电话|地址|编号|搜索|筛选|分类/,
+                /满减|优惠|红包|折扣|起送|免配送/,
+                /^\d+[\.,]\d+\s*分/,
+                /\d+分钟.*\d+m$/i,
+                /^\d+人觉得/,
+            ];
+
+            const shopKeywords = ['店', '馆', '厅', '坊', '屋', '铺', '料理', '美食', '小吃', '快餐', '汉堡', '披萨', '火锅', '烧烤', '奶茶', '咖啡', '面包', '蛋糕', '甜品', '粥', '粉', '面', '饭', '菜', '鸡', '鸭', '鱼', '肉', '虾', '蟹', '寿司', '麻辣烫', '酸菜鱼', '小龙虾'];
+
+            for (const line of lines) {
+                let skip = false;
+                for (const pattern of filterPatterns) {
+                    if (pattern.test(line)) { skip = true; break; }
+                }
+                if (skip) continue;
+
+                let name = line.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-\.\·\(\)（）【】\[\]&]/g, '').trim();
+                if (!name || name.length < 2 || name.length > 30) continue;
+
+                let hasKeyword = false;
+                for (const kw of shopKeywords) {
+                    if (name.includes(kw)) { hasKeyword = true; break; }
+                }
+
+                if (hasKeyword || (/[a-zA-Z]/.test(name) && /[\u4e00-\u9fa5]/.test(name))) {
+                    if (!shops.find(s => s.name === name)) {
+                        shops.push({ name, selected: true });
+                    }
+                }
+            }
+
+            return shops;
+        }
+
+        function showResults() {
+            resultCount.textContent = `识别到 ${recognizedShops.length} 个可能的店铺`;
+            resultItems.innerHTML = recognizedShops.map((shop, idx) => `
+                <div class="line-item ${shop.selected ? 'selected' : ''}" data-idx="${idx}">
+                    <input type="checkbox" class="line-checkbox" ${shop.selected ? 'checked' : ''}>
+                    <input type="text" class="line-text" value="${shop.name}" style="background:transparent;border:none;color:#eaeaea;flex:1;outline:none;font-size:13px;">
+                </div>
+            `).join('');
+
+            lineItems.innerHTML = allLines.map((line, idx) => `
+                <div class="line-item" data-line-idx="${idx}">
+                    <input type="checkbox" class="line-checkbox" data-line-idx="${idx}">
+                    <span class="line-text">${line}</span>
+                </div>
+            `).join('');
+
+            lineSelector.style.display = 'block';
+            importBtns.style.display = 'flex';
+            
+            initCategorySelector(importCategorySelect, '其他');
+            importCategorySelect.style.display = 'flex';
+
+            document.querySelectorAll('#resultItems .line-item').forEach(item => {
+                const idx = parseInt(item.dataset.idx);
+                const checkbox = item.querySelector('.line-checkbox');
+                const input = item.querySelector('.line-text');
+
+                checkbox.onchange = () => {
+                    recognizedShops[idx].selected = checkbox.checked;
+                    item.classList.toggle('selected', checkbox.checked);
+                };
+
+                input.onchange = () => {
+                    recognizedShops[idx].name = input.value.trim();
+                };
+            });
+
+            document.querySelectorAll('#lineItems .line-item').forEach(item => {
+                const checkbox = item.querySelector('.line-checkbox');
+
+                item.onclick = (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    item.classList.toggle('selected', checkbox.checked);
+                };
+            });
+        }
+
+        tabAuto.onclick = () => {
+            tabAuto.classList.add('active');
+            tabManual.classList.remove('active');
+            autoResult.style.display = 'block';
+            manualSelect.style.display = 'none';
+        };
+
+        tabManual.onclick = () => {
+            tabManual.classList.add('active');
+            tabAuto.classList.remove('active');
+            autoResult.style.display = 'none';
+            manualSelect.style.display = 'block';
+        };
+
+        copyOcrBtn.onclick = () => {
+            navigator.clipboard.writeText(lastOcrText).then(() => {
+                copyOcrBtn.textContent = '已复制!';
+                setTimeout(() => { copyOcrBtn.textContent = '复制'; }, 1500);
+            });
+        };
+
+        selectAllBtn.onclick = () => {
+            const currentTab = tabAuto.classList.contains('active') ? 'auto' : 'manual';
+            if (currentTab === 'auto') {
+                const allSelected = recognizedShops.every(s => s.selected);
+                recognizedShops.forEach(s => s.selected = !allSelected);
+                document.querySelectorAll('#resultItems .line-checkbox').forEach(cb => cb.checked = !allSelected);
+            } else {
+                const checkboxes = document.querySelectorAll('#lineItems .line-checkbox');
+                const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => cb.checked = !allSelected);
+            }
+        };
+
+        addManualBtn.onclick = () => {
+            recognizedShops.push({ name: '', selected: true });
+            showResults();
+        };
+
+        confirmImport.onclick = () => {
+            const currentTab = tabAuto.classList.contains('active') ? 'auto' : 'manual';
+            const category = getSelectedCategory(importCategorySelect);
+            let selected = [];
+
+            if (currentTab === 'auto') {
+                selected = recognizedShops.filter(s => s.selected && s.name.trim()).map(s => s.name.trim());
+            } else {
+                document.querySelectorAll('#lineItems .line-checkbox:checked').forEach(cb => {
+                    const idx = parseInt(cb.dataset.lineIdx);
+                    const name = allLines[idx].replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-\.\·\(\)（）【】\[\]&]/g, '').trim();
+                    if (name && name.length >= 2) selected.push(name);
+                });
+            }
+
+            if (selected.length === 0) { alert('请至少选择一个店铺'); return; }
+
+            let added = 0;
+            selected.forEach(name => {
+                if (!shopList.find(s => s.name === name)) { 
+                    shopList.push({ name, category }); 
+                    added++; 
+                }
+            });
+
+            saveShops();
+            importModal.style.display = 'none';
+            showResult(added > 0 ? `✅ 成功添加 ${added} 个店铺到「${category}」` : '⚠️ 所有店铺已存在', added === 0);
+        };
+
+        cancelImport.onclick = () => importModal.style.display = 'none';
+        importModal.onclick = (e) => { if (e.target === importModal) importModal.style.display = 'none'; };
+
+        addManual.onclick = () => {
+            addInput.value = '';
+            initCategorySelector(addCategory, '其他');
+            addModal.style.display = 'flex';
+            addInput.focus();
+        };
+
+        saveAdd.onclick = () => {
+            const name = addInput.value.trim();
+            const category = getSelectedCategory(addCategory);
+            if (!name) { alert('请输入店铺名'); return; }
+            if (shopList.find(s => s.name === name)) { 
+                showResult(`⚠️ 已存在：${name}`, true); 
+                return; 
+            }
+            shopList.push({ name, category });
+            saveShops();
+            addModal.style.display = 'none';
+            showResult(`✅ 添加成功：${name} [${category}]`);
+        };
+
+        cancelAdd.onclick = () => addModal.style.display = 'none';
+        addModal.onclick = (e) => { if (e.target === addModal) addModal.style.display = 'none'; };
+        addInput.onkeyup = (e) => { if (e.key === 'Enter') saveAdd.click(); };
+
+        window.editShop = (idx) => {
+            editingIndex = idx;
+            editInput.value = shopList[idx].name;
+            initCategorySelector(editCategory, shopList[idx].category);
+            editModal.style.display = 'flex';
+            editInput.focus();
+        };
+
+        saveEdit.onclick = () => {
+            const name = editInput.value.trim();
+            const category = getSelectedCategory(editCategory);
+            if (!name) { alert('请输入店铺名'); return; }
+            if (name !== shopList[editingIndex].name && shopList.find(s => s.name === name)) { 
+                alert('该店铺已存在'); 
+                return; 
+            }
+            shopList[editingIndex] = { name, category };
+            saveShops();
+            editModal.style.display = 'none';
+            showResult(`✅ 修改成功：${name} [${category}]`);
+        };
+
+        cancelEdit.onclick = () => editModal.style.display = 'none';
+        editModal.onclick = (e) => { if (e.target === editModal) editModal.style.display = 'none'; };
+        editInput.onkeyup = (e) => { if (e.key === 'Enter') saveEdit.click(); };
+
+        window.delShop = (idx) => {
+            if (confirm(`确定删除 "${shopList[idx].name}" 吗？`)) {
+                shopList.splice(idx, 1);
+                saveShops();
+                showResult(`🗑️ 已删除`);
+            }
+        };
+
+        // 初始化
+        loadCategories();
+        shopList = migrateData();
+        initCategoryFilter();
+        renderList();
+        // 延迟初始化OCR，确保DOM完全就绪
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(initOcr, 500));
+        } else {
+            setTimeout(initOcr, 500);
+        }
+    </script>
+</body>
+</html>
