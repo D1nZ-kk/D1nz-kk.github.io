@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>今晚吃什么？- k1ana.cn</title>
+<title>🎲 今晚吃什么？- k1ana.cn</title>
 <style>
 * {margin: 0; padding: 0; box-sizing: border-box;}
 body {
@@ -35,7 +35,7 @@ h1 {
     padding: 30px;
     width: 100%;
     max-width: 480px;
-    box-shadow: 0 0 30px rgba(100,50,200,0.2);
+    box-shadow: 0 0 30px rgba(100,50,20,0.2);
 }
 .tags {
     display: flex;
@@ -119,6 +119,30 @@ h1 {
     0%, 100% {opacity: 1;}
     50% {opacity: .5;}
 }
+.upload-box {
+    margin: 20px 0;
+    padding: 20px;
+    border: 2px dashed #7266ff;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: .2s;
+}
+.upload-box:hover {
+    background: #1a1a24;
+}
+#imageInput {
+    display: none;
+}
+.ocr-result {
+    margin-top: 10px;
+    padding: 10px;
+    background: #1a1a24;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 14px;
+    color: #aaa;
+}
 </style>
 </head>
 <body>
@@ -139,90 +163,98 @@ h1 {
 </div>
 <div class="btn-group">
     <button class="btn" id="rollBtn" disabled>🎲 随机推荐</button>
-    <button class="btn hate" id="hateBtn" disabled>❌ 不喜欢这家</button>
-</div>
+    <button class="btn hate" id="hateBtn" disabled>❌ 不喜欢</button>
 </div>
 
+<!-- 外卖截图识别功能 -->
+<div class="upload-box" id="uploadBox">
+    <p>📸 上传外卖截图自动识别商家（支持饿了么/美团）</p>
+    <input type="file" id="imageInput" accept="image/*" capture="environment">
+</div>
+<div id="ocrResult" class="ocr-result" style="display: none;"></div>
+</div>
+
+<!-- 引入腾讯地图JS API和Tesseract.js -->
+<script src="https://map.qq.com/api/js?v=2.exp&key=XNTBZ-GQYCA-UZHKE-CNXDR-LAQ22-ZQFWB"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <script>
-// 🎯 分城市商家库（你可以随便加自己城市的店！完全个性化）
-const cityFoods = {
-    // 上海（可加你家附近的店）
-    "shanghai": {
-        all: ["海底捞（上海）","木屋烧烤（上海）","蜜雪冰城（上海）","肯德基（上海）","麦当劳（上海）","星巴克（上海）","麻辣烫（上海）","麻辣香锅（上海）","日料（上海）","烤肉（上海）","披萨（上海）","黄焖鸡（上海）","沙县小吃（上海）","兰州拉面（上海）","炸鸡（上海）","汉堡（上海）","烤鱼（上海）","串串（上海）","冒菜（上海）","螺蛳粉（上海）","寿司（上海）","生腌（上海）","小龙虾（上海）","汉堡王（上海）","德克士（上海）","瑞幸（上海）","库迪（上海）","喜茶（上海）","奈雪（上海）","一点点（上海）","CoCo（上海）","茶百道（上海）","古茗（上海）","沪上阿姨（上海）","益禾堂（上海）","书亦烧仙草（上海）"],
-        hotpot: ["海底捞（上海）","呷哺呷哺（上海）","串串火锅（上海）","重庆火锅（上海）","羊肉火锅（上海）","潮汕牛肉火锅（上海）","寿喜烧（上海）","铜锅涮肉（上海）","冒菜（上海）","麻辣烫（上海）"],
-        bbq: ["木屋烧烤（上海）","烤串（上海）","烤冷面（上海）","烤翅（上海）","烤鱿鱼（上海）","烤生蚝（上海）","烤五花肉（上海）","烤蔬菜（上海）","韩式烤肉（上海）"],
-        milktea: ["蜜雪冰城（上海）","喜茶（上海）","奈雪（上海）","一点点（上海）","CoCo（上海）","茶百道（上海）","古茗（上海）","沪上阿姨（上海）","益禾堂（上海）","书亦烧仙草（上海）","瑞幸（上海）","库迪（上海）","星巴克（上海）"],
-        western: ["披萨（上海）","牛排（上海）","意面（上海）","汉堡王（上海）","肯德基（上海）","麦当劳（上海）","炸鸡（上海）","日料（上海）","寿司（上海）"],
-        fastfood: ["肯德基（上海）","麦当劳（上海）","黄焖鸡（上海）","沙县小吃（上海）","麻辣烫（上海）","兰州拉面（上海）","炸鸡（上海）","汉堡（上海）","德克士（上海）","汉堡王（上海）"]
-    },
-    // 北京（可加你家附近的店）
-    "beijing": {
-        all: ["海底捞（北京）","木屋烧烤（北京）","蜜雪冰城（北京）","肯德基（北京）","麦当劳（北京）","星巴克（北京）","麻辣烫（北京）","麻辣香锅（北京）","日料（北京）","烤肉（北京）","披萨（北京）","黄焖鸡（北京）","沙县小吃（北京）","兰州拉面（北京）","炸鸡（北京）","汉堡（北京）","烤鱼（北京）","串串（北京）","冒菜（北京）","螺蛳粉（北京）","寿司（北京）","生腌（北京）","小龙虾（北京）","汉堡王（北京）","德克士（北京）","瑞幸（北京）","库迪（北京）","喜茶（北京）","奈雪（北京）","一点点（北京）","CoCo（北京）","茶百道（北京）","古茗（北京）","沪上阿姨（北京）","益禾堂（北京）","书亦烧仙草（北京）"],
-        hotpot: ["海底捞（北京）","呷哺呷哺（北京）","串串火锅（北京）","重庆火锅（北京）","羊肉火锅（北京）","潮汕牛肉火锅（北京）","寿喜烧（北京）","铜锅涮肉（北京）","冒菜（北京）","麻辣烫（北京）"],
-        bbq: ["木屋烧烤（北京）","烤串（北京）","烤冷面（北京）","烤翅（北京）","烤鱿鱼（北京）","烤生蚝（北京）","烤五花肉（北京）","烤蔬菜（北京）","韩式烤肉（北京）"],
-        milktea: ["蜜雪冰城（北京）","喜茶（北京）","奈雪（北京）","一点点（北京）","CoCo（北京）","茶百道（北京）","古茗（北京）","沪上阿姨（北京）","益禾堂（北京）","书亦烧仙草（北京）","瑞幸（北京）","库迪（北京）","星巴克（北京）"],
-        western: ["披萨（北京）","牛排（北京）","意面（北京）","汉堡王（北京）","肯德基（北京）","麦当劳（北京）","炸鸡（北京）","日料（北京）","寿司（北京）"],
-        fastfood: ["肯德基（北京）","麦当劳（北京）","黄焖鸡（北京）","沙县小吃（北京）","麻辣烫（北京）","兰州拉面（北京）","炸鸡（北京）","汉堡（北京）","德克士（北京）","汉堡王（北京）"]
-    },
-    // 全国通用（定位失败/未知城市时用）
-    "national": {
-        all: ["海底捞","木屋烧烤","蜜雪冰城","肯德基","麦当劳","星巴克","麻辣烫","麻辣香锅","日料","烤肉","披萨","黄焖鸡","沙县小吃","兰州拉面","炸鸡","汉堡","烤鱼","串串","冒菜","螺蛳粉","寿司","生腌","小龙虾","汉堡王","德克士","瑞幸","库迪","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨","益禾堂","书亦烧仙草"],
-        hotpot: ["海底捞","呷哺呷哺","串串火锅","重庆火锅","羊肉火锅","潮汕牛肉火锅","寿喜烧","铜锅涮肉","冒菜","麻辣烫"],
-        bbq: ["木屋烧烤","烤串","烤冷面","烤翅","烤鱿鱼","烤生蚝","烤五花肉","烤蔬菜","韩式烤肉"],
-        milktea: ["蜜雪冰城","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨","益禾堂","书亦烧仙草","瑞幸","库迪","星巴克"],
-        western: ["披萨","牛排","意面","汉堡王","肯德基","麦当劳","炸鸡","日料","寿司"],
-        fastfood: ["肯德基","麦当劳","黄焖鸡","沙县小吃","麻辣烫","兰州拉面","炸鸡","汉堡","德克士","汉堡王"]
-    }
+// 🔑 已填好你的专属腾讯地图Key，无需修改
+const TENCENT_MAP_KEY = "XNTBZ-GQYCA-UZHKE-CNXDR-LAQ22-ZQFWB";
+// 🌍 搜索半径（米），可修改：1000=1公里，2000=2公里，3000=3公里
+const SEARCH_RADIUS = 2000;
+
+// 📦 本地商家库（API失败时兜底，可自定义添加）
+const localFoods = {
+    all: ["海底捞","木屋烧烤","蜜雪冰城","肯德基","麦当劳","星巴克","麻辣烫","麻辣香锅","日料","烤肉","披萨","黄焖鸡","沙县小吃","兰州拉面","炸鸡","汉堡","烤鱼","串串","冒菜","螺蛳粉"],
+    hotpot: ["海底捞","呷哺呷哺","串串火锅","重庆火锅","羊肉火锅","潮汕牛肉火锅","寿喜烧","铜锅涮肉"],
+    bbq: ["木屋烧烤","烤串","烤冷面","烤翅","烤鱿鱼","烤生蚝","韩式烤肉"],
+    milktea: ["蜜雪冰城","喜茶","奈雪","一点点","CoCo","茶百道","古茗","沪上阿姨"],
+    western: ["披萨","牛排","意面","汉堡王","肯德基","麦当劳","日料","寿司"],
+    fastfood: ["肯德基","麦当劳","黄焖鸡","沙县小吃","麻辣烫","兰州拉面","炸鸡","汉堡"]
 };
 
 // 全局变量
 let currentType = "all";
 let currentShop = "";
-let currentCityFoods = cityFoods.national; // 默认全国
+let nearbyShops = []; // 存储真实附近商家
+let currentFoods = localFoods; // 默认本地
 const rollBtn = document.getElementById('rollBtn');
 const hateBtn = document.getElementById('hateBtn');
 const resultEl = document.getElementById('result');
+const uploadBox = document.getElementById('uploadBox');
+const imageInput = document.getElementById('imageInput');
+const ocrResultEl = document.getElementById('ocrResult');
 
-// 🔒 初始化：加载本地避雷列表（永久保存，下次打开还能用）
+// 🔒 初始化避雷列表（本地永久存储）
 let hatedList = JSON.parse(localStorage.getItem('k1ana_hated_food')) || [];
 
-// 📍 根据经纬度判断城市（核心：模拟真实定位推荐）
-function getCityByCoords(lat, lng) {
-    // 上海经纬度范围：北纬30°40′-31°53′，东经120°52′-122°12′
-    if (lat >= 30.6667 && lat <= 31.8833 && lng >= 120.8667 && lng <= 122.2) {
-        return "shanghai";
-    }
-    // 北京经纬度范围：北纬39°4′-41°6′，东经115°25′-117°30′
-    else if (lat >= 39.0667 && lat <= 41.1 && lng >= 115.4167 && lng <= 117.5) {
-        return "beijing";
-    }
-    // 可加更多城市（广州、深圳等）
-    // 未知城市，返回全国
-    else {
-        return "national";
-    }
-}
-
-// 1. 初始化定位
+// 1. 初始化定位和附近商家（彻底解决加载问题，双重兜底）
 function initLocation() {
     resultEl.innerHTML = `<span class="loading">正在获取你的位置...</span>`;
     rollBtn.disabled = true;
     hateBtn.disabled = true;
 
-    // 调用浏览器原生定位（不用API，纯前端）
-    navigator.geolocation.getCurrentPosition(function(pos) {
+    // 浏览器原生定位
+    navigator.geolocation.getCurrentPosition(async function(pos) {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        // 判断城市
-        const city = getCityByCoords(lat, lng);
-        currentCityFoods = cityFoods[city];
-        // 提示
-        resultEl.innerHTML = `<span>定位成功！已加载${currentCityFoods.all.length}家附近商家，点击按钮随机推荐！</span>`;
-        rollBtn.disabled = false;
+        resultEl.innerHTML = `<span class="loading">正在加载附近${SEARCH_RADIUS/1000}公里商家...</span>`;
+        
+        try {
+            // 调用腾讯地图WebServiceAPI获取真实附近商家
+            const url = `https://apis.map.qq.com/ws/place/v1/search?keyword=餐厅&boundary=nearby(${lat},${lng},${SEARCH_RADIUS})&page_size=20&key=${TENCENT_MAP_KEY}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (data.status === 0 && data.data.length > 0) {
+                // 成功获取真实商家，自动分类
+                nearbyShops = data.data.map(item => item.title);
+                currentFoods = {
+                    all: nearbyShops,
+                    hotpot: nearbyShops.filter(shop => /火锅|串串|涮肉/.test(shop)),
+                    bbq: nearbyShops.filter(shop => /烧烤|烤肉|烤串/.test(shop)),
+                    milktea: nearbyShops.filter(shop => /奶茶|咖啡|茶饮/.test(shop)),
+                    western: nearbyShops.filter(shop => /西餐|披萨|牛排|日料|寿司/.test(shop)),
+                    fastfood: nearbyShops.filter(shop => /快餐|汉堡|炸鸡|沙县|拉面/.test(shop))
+                };
+                resultEl.innerHTML = `<span>定位成功！已加载${nearbyShops.length}家真实附近商家，点击按钮随机推荐！</span>`;
+            } else {
+                // API返回空，自动切换本地商家兜底
+                currentFoods = localFoods;
+                resultEl.innerHTML = `<span>附近商家较少，已切换本地推荐，点击按钮随机推荐！</span>`;
+            }
+            rollBtn.disabled = false;
+        } catch (err) {
+            // 网络/API异常，自动切换本地商家，永远不崩
+            currentFoods = localFoods;
+            resultEl.innerHTML = `<span>网络异常，已切换本地推荐，点击按钮随机推荐！</span>`;
+            rollBtn.disabled = false;
+        }
     }, function(err) {
-        // 定位失败，用全国商家
-        currentCityFoods = cityFoods.national;
-        resultEl.innerHTML = `<span>定位失败，已切换全国商家，点击按钮随机推荐！</span>`;
+        // 定位失败，自动切换本地商家
+        currentFoods = localFoods;
+        resultEl.innerHTML = `<span>定位失败，已切换本地推荐，点击按钮随机推荐！</span>`;
         rollBtn.disabled = false;
     }, {
         enableHighAccuracy: false,
@@ -231,7 +263,7 @@ function initLocation() {
     });
 }
 
-// 2. 标签切换事件
+// 2. 分类标签切换
 document.querySelectorAll('.tag').forEach(tag => {
     tag.addEventListener('click', function() {
         document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
@@ -243,43 +275,104 @@ document.querySelectorAll('.tag').forEach(tag => {
     });
 });
 
-// 3. 随机推荐函数
+// 3. 随机推荐功能
 rollBtn.addEventListener('click', function() {
-    // 过滤掉避雷的店
-    let list = currentCityFoods[currentType].filter(shop => !hatedList.includes(shop));
+    // 过滤避雷商家
+    let list = currentFoods[currentType].filter(shop => !hatedList.includes(shop));
     
-    // 避免过滤完没的选，自动清空避雷
+    // 避雷过多自动清空，避免无店可抽
     if (list.length === 0) {
         hatedList = [];
         localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
-        list = currentCityFoods[currentType];
+        list = currentFoods[currentType];
         resultEl.innerHTML = `<span>避雷列表已清空，重新抽！</span>`;
     }
     
-    // 随机选一个
-    const randomShop = list[Math.floor(Math.random() * list.length)];
+    // 随机抽取
+    const randomShop = list[Math.floor(Math.random()*list.length)];
     currentShop = randomShop;
-    
-    // 显示结果
     resultEl.innerHTML = `<div class="name">🍽️ ${randomShop}</div>`;
-    hateBtn.disabled = false; // 启用避雷按钮
+    hateBtn.disabled = false;
 });
 
-// 4. 避雷函数（你要的「逐渐个性化」核心功能）
+// 4. 避雷功能（永久存储，越用越懂你）
 hateBtn.addEventListener('click', function() {
     if (!currentShop) return;
     
-    // 加入避雷列表，永久保存
     hatedList.push(currentShop);
     localStorage.setItem('k1ana_hated_food', JSON.stringify(hatedList));
-    
-    // 提示
     resultEl.innerHTML = `<div class="info">✅ 已将「${currentShop}」加入避雷列表，下次不会再推荐！</div>`;
     hateBtn.disabled = true;
     currentShop = "";
 });
 
-// 5. 页面加载完成后初始化
+// 5. 外卖截图OCR识别（纯前端，无需后端）
+uploadBox.addEventListener('click', function() {
+    imageInput.click();
+});
+
+imageInput.addEventListener('change', async function(e) {
+    if (!e.target.files[0]) return;
+    
+    const file = e.target.files[0];
+    ocrResultEl.style.display = 'block';
+    ocrResultEl.innerHTML = `<span class="loading">正在识别截图...</span>`;
+    
+    try {
+        // 调用Tesseract.js识别中英文
+        const { data: { text } } = await Tesseract.recognize(
+            file,
+            'chi_sim+eng',
+            { logger: m => console.log(m) }
+        );
+        
+        // 提取商家名称（适配美团/饿了么截图规则）
+        let shopName = "";
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+        
+        // 优先提取非订单信息的首行商家名
+        for (let i = 0; i < Math.min(5, lines.length); i++) {
+            if (!lines[i].includes('订单') && !lines[i].includes('编号') && !lines[i].includes('时间') && lines[i].length > 2) {
+                shopName = lines[i];
+                break;
+            }
+        }
+        // 兜底提取
+        shopName = shopName || lines[0] || "未识别到商家";
+        
+        ocrResultEl.innerHTML = `
+            <p>📝 识别结果：</p>
+            <p>🏪 商家名称：<span style="color:#ff5588;">${shopName}</span></p>
+            <p>📋 完整文本：<br>${text.substring(0, 300)}${text.length > 300 ? '...' : ''}</p>
+            <button class="btn" style="width:100%;margin-top:10px;" onclick="addShopToFoods('${encodeURIComponent(shopName)}')">➕ 添加到推荐库</button>
+        `;
+    } catch (err) {
+        ocrResultEl.innerHTML = `<span style="color:#ff5555;">识别失败：${err.message}</span>`;
+    }
+});
+
+// 全局方法：添加识别的商家到推荐库
+function addShopToFoods(encodedShopName) {
+    const shopName = decodeURIComponent(encodedShopName);
+    if (!shopName || shopName === "未识别到商家") return;
+    
+    if (!currentFoods.all.includes(shopName)) {
+        currentFoods.all.push(shopName);
+        // 自动分类
+        if (/火锅|串串|涮肉/.test(shopName)) currentFoods.hotpot.push(shopName);
+        if (/烧烤|烤肉|烤串/.test(shopName)) currentFoods.bbq.push(shopName);
+        if (/奶茶|咖啡|茶饮/.test(shopName)) currentFoods.milktea.push(shopName);
+        if (/西餐|披萨|牛排|日料|寿司/.test(shopName)) currentFoods.western.push(shopName);
+        if (/快餐|汉堡|炸鸡|沙县|拉面/.test(shopName)) currentFoods.fastfood.push(shopName);
+        
+        resultEl.innerHTML = `<span>✅ 已添加「${shopName}」到推荐库，现在可以随机推荐啦！</span>`;
+        ocrResultEl.style.display = 'none';
+    } else {
+        resultEl.innerHTML = `<span>「${shopName}」已在推荐库中！</span>`;
+    }
+}
+
+// 页面加载自动初始化
 window.onload = initLocation;
 </script>
 
