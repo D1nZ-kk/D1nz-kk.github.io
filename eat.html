@@ -109,8 +109,8 @@ h1 {
     50% {opacity: .5;}
 }
 </style>
-<!-- 引入高德地图JS API，已填入你的专属Key -->
-<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=3b5861713e33c15b51a9e457da883cb0&plugin=AMap.Scale,AMap.ToolBar,AMap.Geolocation,AMap.PlaceSearch"></script>
+<!-- 换用高德JS API v1.4.15 稳定版，已填你的专属Key -->
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=3b5861713e33c15b51a9e457da883cb0&plugin=AMap.Geolocation,AMap.PlaceSearch"></script>
 </head>
 <body>
 
@@ -138,7 +138,7 @@ let currentType = "0"; // 0=全部，对应高德餐饮分类代码
 const rollBtn = document.getElementById('rollBtn');
 const resultEl = document.getElementById('result');
 
-// 高德地图分类代码（对应标签）
+// 高德地图分类代码（对应标签，v1.4.15稳定版分类）
 const typeMap = {
     "0": "餐饮服务",
     "110000": "火锅",
@@ -148,7 +148,17 @@ const typeMap = {
     "110200": "快餐"
 };
 
-// 1. 初始化地图和定位
+// 本地兜底商家列表（API加载失败时自动启用，保证工具永远能用）
+const fallbackFoods = {
+    all: ["海底捞","木屋烧烤","蜜雪冰城","肯德基","麦当劳","麻辣烫","麻辣香锅","日料","烤肉","披萨","黄焖鸡","沙县小吃","兰州拉面","炸鸡","汉堡","烤鱼","串串"],
+    火锅: ["海底捞","呷哺呷哺","串串火锅","重庆火锅","羊肉火锅"],
+    烧烤: ["木屋烧烤","烤串","烤冷面","烤翅","烤鱿鱼"],
+    奶茶: ["蜜雪冰城","喜茶","奈雪","一点点","CoCo"],
+    西餐: ["披萨","牛排","意面","汉堡王"],
+    快餐: ["肯德基","麦当劳","黄焖鸡","沙县小吃","麻辣烫"]
+};
+
+// 1. 初始化地图和定位（v1.4.15稳定版，延长超时避免失败）
 function initMap() {
     // 创建隐藏的地图容器（仅用于API调用，不显示在页面）
     const mapContainer = document.createElement('div');
@@ -160,13 +170,12 @@ function initMap() {
     map = new AMap.Map('container', {
         zoom: 15,
         center: [116.397428, 39.90923], // 默认北京，定位后自动更新
-        viewMode: '2D'
     });
 
-    // 初始化定位
+    // 初始化定位（延长超时到15秒，避免定位慢导致失败）
     geolocation = new AMap.Geolocation({
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         buttonPosition: 'RB',
         buttonOffset: new AMap.Pixel(10, 20)
     });
@@ -178,41 +187,51 @@ function initMap() {
             map.setCenter([lng, lat]);
             searchNearbyShops(lng, lat, currentType);
         } else {
-            resultEl.innerHTML = `<span>定位失败，请允许位置权限，或刷新重试</span>`;
-            rollBtn.disabled = true;
+            // 定位失败，自动切换本地兜底
+            useFallbackList(currentType);
         }
     });
 }
 
-// 2. 搜索周边3公里内的商家
+// 2. 搜索周边5公里内的商家（v1.4.15稳定版参数，修复加载失败）
 function searchNearbyShops(lng, lat, type) {
     resultEl.innerHTML = `<span class="loading">正在加载附近的商家...</span>`;
     rollBtn.disabled = true;
 
-    // 初始化PlaceSearch
+    // 初始化PlaceSearch（v1.4.15稳定版参数，修复兼容性）
     placeSearch = new AMap.PlaceSearch({
         pageSize: 50,
         pageIndex: 1,
-        citylimit: true,
+        city: "", // 自动根据定位获取城市，避免城市限制
+        citylimit: false,
         type: typeMap[type],
         panel: false
     });
 
-    // 执行周边搜索
-    placeSearch.searchNearBy('', [lng, lat], 3000, function(status, result) {
-        if (status === 'complete' && result.poiList) {
+    // 执行周边搜索（扩大搜索半径到5000米，避免3公里内商家少加载失败）
+    placeSearch.searchNearBy('', [lng, lat], 5000, function(status, result) {
+        if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
             shopList = result.poiList.pois;
             resultEl.innerHTML = `<span>已加载 ${shopList.length} 家附近餐饮，点击按钮随机推荐！</span>`;
             rollBtn.disabled = false;
             rollBtn.innerText = "🎲 随机推荐一家";
         } else {
-            resultEl.innerHTML = `<span>加载商家失败，请稍后重试</span>`;
-            rollBtn.disabled = true;
+            // API加载失败，自动切换本地兜底
+            useFallbackList(type);
         }
     });
 }
 
-// 3. 标签切换事件
+// 3. 本地兜底方案（API失败时启用，保证工具永远可用）
+function useFallbackList(type) {
+    const list = fallbackFoods[type === "0" ? "all" : typeMap[type]];
+    shopList = list.map(name => ({name: name, address: "附近商家", distance: "未知", type: typeMap[type]}));
+    resultEl.innerHTML = `<span>API加载超时，已切换本地推荐，点击按钮随机抽！</span>`;
+    rollBtn.disabled = false;
+    rollBtn.innerText = "🎲 随机推荐一家";
+}
+
+// 4. 标签切换事件
 document.querySelectorAll('.tag').forEach(tag => {
     tag.addEventListener('click', function() {
         document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
@@ -221,25 +240,36 @@ document.querySelectorAll('.tag').forEach(tag => {
         if (geolocation && geolocation.getPosition()) {
             const { lng, lat } = geolocation.getPosition();
             searchNearbyShops(lng, lat, currentType);
+        } else {
+            // 无定位时，直接用本地兜底
+            useFallbackList(currentType);
         }
     });
 });
 
-// 4. 随机推荐函数
+// 5. 随机推荐函数（兼容真实商家+本地兜底）
 rollBtn.addEventListener('click', function() {
     if (shopList.length === 0) {
         resultEl.innerHTML = `<span>暂无商家数据，请等待加载完成</span>`;
         return;
     }
     const randomShop = shopList[Math.floor(Math.random() * shopList.length)];
-    const distance = randomShop.distance ? (randomShop.distance / 1000).toFixed(1) + "km" : "附近";
-    resultEl.innerHTML = `
-        <div class="name">🍽️ ${randomShop.name}</div>
-        <div class="info">📍 ${randomShop.address} | 🚶 ${distance} | 🏷️ ${randomShop.type}</div>
-    `;
+    // 区分真实商家和本地兜底
+    if (randomShop.distance && typeof randomShop.distance === 'number') {
+        const distance = (randomShop.distance / 1000).toFixed(1) + "km";
+        resultEl.innerHTML = `
+            <div class="name">🍽️ ${randomShop.name}</div>
+            <div class="info">📍 ${randomShop.address} | 🚶 ${distance} | 🏷️ ${randomShop.type}</div>
+        `;
+    } else {
+        resultEl.innerHTML = `
+            <div class="name">🍽️ ${randomShop.name}</div>
+            <div class="info">🏷️ ${randomShop.type}</div>
+        `;
+    }
 });
 
-// 5. 页面加载完成后初始化
+// 6. 页面加载完成后初始化
 window.onload = initMap;
 </script>
 
