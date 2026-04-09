@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今晚吃啥？- k1ana.cn</title>
+<style>
+* {margin: 0; padding: 0; box-sizing: border-box;}
+body {
+    background: #0a0a0f;
+    color: #eaeaea;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #ffffff;
+    text-shadow: 0 0 10px #7266ff;
+}
+.desc {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
+}
+.box {
+    background: #121217;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 30px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 0 30px rgba(100,50,200,0.2);
+}
+.tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0 20px;
+}
+.tag {
+    padding: 6px 12px;
+    background: #222;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: .2s;
+}
+.tag.active {
+    background: #7266ff;
+    color: #fff;
+}
+.result {
+    font-size: 20px;
+    margin: 20px 0;
+    padding: 16px;
+    background: #1a1a24;
+    border-radius: 10px;
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.result .name {
+    font-weight: bold;
+    color: #ff5588;
+    font-size: 22px;
+}
+.result .info {
+    font-size: 14px;
+    color: #aaa;
+}
+.btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #7266ff, #ff5588);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: .2s;
+}
+.btn:hover {
+    opacity: .9;
+    transform: scale(1.02);
+}
+.btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+}
+.loading {
+    color: #7266ff;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0%, 100% {opacity: 1;}
+    50% {opacity: .5;}
+}
+</style>
+<!-- 引入高德地图JS API，已填入你的专属Key -->
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=3b5861713e33c15b51a9e457da883cb0&plugin=AMap.Scale,AMap.ToolBar,AMap.Geolocation,AMap.PlaceSearch"></script>
+</head>
+<body>
+
+<div class="box">
+<h1>🎲 今晚吃什么？</h1>
+<p class="desc">自动获取你附近的外卖商家，随机推荐不纠结！</p>
+<div class="tags">
+<div class="tag active" data-type="0">全部</div>
+<div class="tag" data-type="110000">火锅</div>
+<div class="tag" data-type="110100">烧烤</div>
+<div class="tag" data-type="110600">奶茶</div>
+<div class="tag" data-type="110300">西餐</div>
+<div class="tag" data-type="110200">快餐</div>
+</div>
+<div class="result" id="result">
+    <span class="loading">正在获取你的位置...</span>
+</div>
+<button class="btn" id="rollBtn" disabled>加载中...</button>
+</div>
+
+<script>
+// 全局变量
+let map, geolocation, placeSearch, shopList = [];
+let currentType = "0"; // 0=全部，对应高德餐饮分类代码
+const rollBtn = document.getElementById('rollBtn');
+const resultEl = document.getElementById('result');
+
+// 高德地图分类代码（对应标签）
+const typeMap = {
+    "0": "餐饮服务",
+    "110000": "火锅",
+    "110100": "烧烤",
+    "110600": "奶茶",
+    "110300": "西餐",
+    "110200": "快餐"
+};
+
+// 1. 初始化地图和定位
+function initMap() {
+    // 创建隐藏的地图容器（仅用于API调用，不显示在页面）
+    const mapContainer = document.createElement('div');
+    mapContainer.id = 'container';
+    mapContainer.style.display = 'none';
+    document.body.appendChild(mapContainer);
+
+    // 初始化地图
+    map = new AMap.Map('container', {
+        zoom: 15,
+        center: [116.397428, 39.90923], // 默认北京，定位后自动更新
+        viewMode: '2D'
+    });
+
+    // 初始化定位
+    geolocation = new AMap.Geolocation({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        buttonPosition: 'RB',
+        buttonOffset: new AMap.Pixel(10, 20)
+    });
+
+    // 执行定位
+    geolocation.getCurrentPosition(function(status, result) {
+        if (status === 'complete') {
+            const { lng, lat } = result.position;
+            map.setCenter([lng, lat]);
+            searchNearbyShops(lng, lat, currentType);
+        } else {
+            resultEl.innerHTML = `<span>定位失败，请允许位置权限，或刷新重试</span>`;
+            rollBtn.disabled = true;
+        }
+    });
+}
+
+// 2. 搜索周边3公里内的商家
+function searchNearbyShops(lng, lat, type) {
+    resultEl.innerHTML = `<span class="loading">正在加载附近的商家...</span>`;
+    rollBtn.disabled = true;
+
+    // 初始化PlaceSearch
+    placeSearch = new AMap.PlaceSearch({
+        pageSize: 50,
+        pageIndex: 1,
+        citylimit: true,
+        type: typeMap[type],
+        panel: false
+    });
+
+    // 执行周边搜索
+    placeSearch.searchNearBy('', [lng, lat], 3000, function(status, result) {
+        if (status === 'complete' && result.poiList) {
+            shopList = result.poiList.pois;
+            resultEl.innerHTML = `<span>已加载 ${shopList.length} 家附近餐饮，点击按钮随机推荐！</span>`;
+            rollBtn.disabled = false;
+            rollBtn.innerText = "🎲 随机推荐一家";
+        } else {
+            resultEl.innerHTML = `<span>加载商家失败，请稍后重试</span>`;
+            rollBtn.disabled = true;
+        }
+    });
+}
+
+// 3. 标签切换事件
+document.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', function() {
+        document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentType = this.dataset.type;
+        if (geolocation && geolocation.getPosition()) {
+            const { lng, lat } = geolocation.getPosition();
+            searchNearbyShops(lng, lat, currentType);
+        }
+    });
+});
+
+// 4. 随机推荐函数
+rollBtn.addEventListener('click', function() {
+    if (shopList.length === 0) {
+        resultEl.innerHTML = `<span>暂无商家数据，请等待加载完成</span>`;
+        return;
+    }
+    const randomShop = shopList[Math.floor(Math.random() * shopList.length)];
+    const distance = randomShop.distance ? (randomShop.distance / 1000).toFixed(1) + "km" : "附近";
+    resultEl.innerHTML = `
+        <div class="name">🍽️ ${randomShop.name}</div>
+        <div class="info">📍 ${randomShop.address} | 🚶 ${distance} | 🏷️ ${randomShop.type}</div>
+    `;
+});
+
+// 5. 页面加载完成后初始化
+window.onload = initMap;
+</script>
+
+</body>
+</html>
